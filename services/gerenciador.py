@@ -1,3 +1,26 @@
+# =============================================================================
+# services/gerenciador.py
+# -----------------------------------------------------------------------------
+# Classe central de lógica de negócio da aplicação.
+# O Gerenciador é o único ponto de contato entre a interface gráfica
+# (views) e os dados (models). Nenhuma tela deve criar ou modificar
+# objetos Transacao ou Meta diretamente — tudo passa pelo Gerenciador.
+#
+# Responsabilidades:
+#   - Criar e armazenar Receitas e Despesas
+#   - Criar e armazenar Metas
+#   - Remover transações e metas
+#   - Filtrar transações por tipo, categoria, mês e ano
+#   - Calcular o saldo atual
+#
+# Conceitos demonstrados neste arquivo:
+#   - Encapsulamento: as listas _transacoes e _metas são privadas
+#   - List comprehension: usada nos métodos de filtro
+#   - Tratamento de exceções: IndexError ao remover índice inválido
+#
+# RESPONSÁVEL: Pessoa 3
+# =============================================================================
+
 from datetime import date
 from models import Transacao, Receita, Despesa, Meta
 
@@ -17,7 +40,7 @@ class Gerenciador:
         self._transacoes = []
         self._metas = []
 
-    # ── Transações ─────────────────────────────────────────────────────
+    # ── Transações ──────────────────────────────────────────────────────────
 
     def adicionar_receita(self, descricao: str, valor: float, categoria: str, data: date = None) -> Receita:
         """
@@ -27,6 +50,7 @@ class Gerenciador:
             O objeto Receita criado.
         """
         # TODO: Implementar
+        # Dica: crie um objeto Receita e adicione em self._transacoes
         pass
 
     def adicionar_despesa(self, descricao: str, valor: float, categoria: str, data: date = None) -> Despesa:
@@ -53,23 +77,25 @@ class Gerenciador:
             IndexError: Se o índice for inválido.
         """
         # TODO: Implementar
+        # Dica: valide o índice antes de remover para lançar IndexError claro
         pass
 
     def listar_transacoes(self, tipo: str = None, categoria: str = None, mes: int = None, ano: int = None) -> list:
         """
         Retorna transações filtradas pelos parâmetros fornecidos.
+        Parâmetros não informados (None) não aplicam filtro.
 
         Args:
-            tipo: 'receita' ou 'despesa'. None retorna todos.
-            categoria: Filtra por categoria. None retorna todos.
-            mes: Filtra por mês (1-12). None retorna todos.
-            ano: Filtra por ano. None retorna todos.
+            tipo: 'receita' ou 'despesa'.
+            categoria: Nome da categoria.
+            mes: Número do mês (1-12).
+            ano: Ano com 4 dígitos.
 
         Returns:
-            Lista de transações que atendem aos filtros.
+            Lista de transações que atendem a todos os filtros.
         """
         # TODO: Implementar usando list comprehension
-        # Dica: use t.tipo() para verificar o tipo
+        # Dica: comece com resultado = self._transacoes e vá filtrando
         pass
 
     def saldo_atual(self) -> float:
@@ -80,9 +106,10 @@ class Gerenciador:
             Saldo como float.
         """
         # TODO: Implementar
+        # Dica: use sum() com list comprehension para receitas e despesas
         pass
 
-    # ── Metas ───────────────────────────────────────────────────────────
+    # ── Metas ────────────────────────────────────────────────────────────────
 
     def adicionar_meta(self, descricao: str, valor_alvo: float, prazo: date) -> Meta:
         """
@@ -105,10 +132,10 @@ class Gerenciador:
         pass
 
     def listar_metas(self) -> list:
-        """Retorna todas as metas."""
+        """Retorna cópia da lista de metas."""
         return self._metas.copy()
 
-    # ── Dados brutos (usados pela Persistência) ─────────────────────────
+    # ── Dados brutos (usados pela Persistência) ──────────────────────────────
 
     def get_transacoes(self) -> list:
         """Retorna a lista interna de transações."""

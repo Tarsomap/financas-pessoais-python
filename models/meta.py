@@ -1,3 +1,22 @@
+# =============================================================================
+# models/meta.py
+# -----------------------------------------------------------------------------
+# Define a classe Meta, que representa um objetivo financeiro do usuário.
+# Exemplos: "Guardar R$2000 para uma viagem até dezembro",
+#           "Juntar R$500 para um presente até o fim do mês".
+#
+# Conceitos demonstrados neste arquivo:
+#   - Encapsulamento: atributos privados (_valor_atual) com acesso
+#     controlado por @property. O valor atual não pode ser alterado
+#     diretamente — só através do método depositar().
+#   - Métodos que encapsulam regras de negócio: esta_concluida(),
+#     esta_atrasada() e status() evitam que essa lógica fique
+#     espalhada pelo resto do código.
+#   - Uso de date.today() para comparações de data.
+#
+# RESPONSÁVEL: Pessoa 2
+# =============================================================================
+
 from datetime import date
 
 
@@ -8,7 +27,7 @@ class Meta:
     Atributos:
         _descricao (str): O que se deseja alcançar.
         _valor_alvo (float): Valor a ser economizado.
-        _valor_atual (float): Quanto já foi economizado.
+        _valor_atual (float): Quanto já foi economizado (começa em 0).
         _prazo (date): Data limite para a meta.
     """
 
@@ -52,6 +71,7 @@ class Meta:
     def depositar(self, valor: float) -> None:
         """
         Adiciona valor ao progresso da meta.
+        O valor atual não pode ultrapassar o valor alvo.
 
         Args:
             valor: Valor a depositar (deve ser > 0).
@@ -60,7 +80,7 @@ class Meta:
             ValueError: Se o valor for <= 0.
         """
         # TODO: Implementar
-        # Dica: não deixar ultrapassar o valor_alvo
+        # Dica: use min() para não ultrapassar o valor_alvo
         pass
 
     def percentual_concluido(self) -> float:
@@ -71,6 +91,7 @@ class Meta:
             Valor entre 0.0 e 100.0.
         """
         # TODO: Implementar
+        # Dica: (self._valor_atual / self._valor_alvo) * 100
         pass
 
     def esta_concluida(self) -> bool:
@@ -85,17 +106,18 @@ class Meta:
 
     def esta_atrasada(self) -> bool:
         """
-        Verifica se a meta está atrasada (prazo passou e não foi concluída).
+        Verifica se a meta está atrasada.
+        Uma meta está atrasada se o prazo já passou e ela não foi concluída.
 
         Returns:
-            True se prazo < hoje e não está concluída.
+            True se prazo < date.today() e não está concluída.
         """
         # TODO: Implementar
         pass
 
     def status(self) -> str:
         """
-        Retorna o status da meta como string.
+        Retorna o status da meta como string legível.
 
         Returns:
             'concluída', 'atrasada' ou 'em andamento'.

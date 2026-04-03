@@ -1,3 +1,27 @@
+# =============================================================================
+# tests/test_gerenciador.py
+# -----------------------------------------------------------------------------
+# Testes unitários para a classe Gerenciador.
+#
+# Fixtures do pytest:
+#   Uma fixture é uma função decorada com @pytest.fixture que prepara
+#   dados ou objetos reutilizáveis entre testes. Ao declarar o nome da
+#   fixture como parâmetro de um teste, o pytest a executa automaticamente
+#   antes do teste e injeta o valor retornado.
+#
+#   Exemplo:
+#     @pytest.fixture
+#     def gerenciador():
+#         return Gerenciador()   # ← executado antes de cada teste que pedir
+#
+#     def test_algo(gerenciador):  # ← gerenciador já é um Gerenciador limpo
+#         ...
+#
+#   Por que usar fixtures?
+#   Evita duplicar o código de preparação (Arrange) em cada teste.
+#   Cada teste recebe uma instância fresca, isolada dos outros.
+# =============================================================================
+
 import pytest
 from datetime import date
 from services import Gerenciador

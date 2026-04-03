@@ -1,3 +1,19 @@
+# =============================================================================
+# models/categoria.py
+# -----------------------------------------------------------------------------
+# Define a classe Categoria, que representa uma classificação para
+# agrupar transações do mesmo tipo (ex: Alimentação, Transporte, Saúde).
+#
+# Conceitos demonstrados neste arquivo:
+#   - Atributo de classe (CATEGORIAS_PADRAO): pertence à classe, não a
+#     cada objeto. É compartilhado por todas as instâncias.
+#   - @classmethod (listar_padroes): método que pertence à classe, não
+#     a uma instância específica. Recebe 'cls' em vez de 'self'.
+#     Usado aqui para criar objetos Categoria a partir da lista padrão.
+#
+# RESPONSÁVEL: Pessoa 2
+# =============================================================================
+
 class Categoria:
     """
     Representa uma categoria de transação.
@@ -7,6 +23,7 @@ class Categoria:
         _icone (str): Emoji representando a categoria.
     """
 
+    # Atributo de classe: lista de categorias padrão do sistema
     CATEGORIAS_PADRAO = [
         ("Alimentação", "🍔"),
         ("Transporte", "🚗"),
@@ -47,12 +64,14 @@ class Categoria:
     @classmethod
     def listar_padroes(cls) -> list:
         """
-        Retorna lista de objetos Categoria com as categorias padrão.
+        Método de classe que retorna uma lista de objetos Categoria
+        criados a partir de CATEGORIAS_PADRAO.
 
         Returns:
             Lista de objetos Categoria.
         """
         # TODO: Implementar usando CATEGORIAS_PADRAO
+        # Dica: [Categoria(nome, icone) for nome, icone in cls.CATEGORIAS_PADRAO]
         pass
 
     def __str__(self) -> str:

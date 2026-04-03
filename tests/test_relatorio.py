@@ -1,3 +1,25 @@
+# =============================================================================
+# tests/test_relatorio.py
+# -----------------------------------------------------------------------------
+# Testes unitários para a classe Relatorio.
+#
+# Por que Relatorio é fácil de testar?
+#   Todos os métodos são @staticmethod e recebem dados como parâmetro.
+#   Não há estado interno nem dependências externas (banco de dados,
+#   arquivo, interface gráfica). Dado o mesmo input, sempre retornam
+#   o mesmo output — isso é uma função pura.
+#
+# Fixture 'transacoes_abril':
+#   Uma lista fixa de transações com valores conhecidos.
+#   Usamos ela em vários testes para garantir que os cálculos
+#   estão corretos. Como os valores são fixos, sabemos exatamente
+#   o resultado esperado:
+#     Receitas: 3000 + 500 = 3500
+#     Despesas: 600 + 150 + 80 + 100 = 930
+#     Saldo: 3500 - 930 = 2570
+#     Categoria mais gasta: Alimentação (750 de 930 = ~80%)
+# =============================================================================
+
 import pytest
 from datetime import date
 from models import Receita, Despesa

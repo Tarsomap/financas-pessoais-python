@@ -1,3 +1,23 @@
+# =============================================================================
+# models/transacao.py
+# -----------------------------------------------------------------------------
+# Define as classes que representam transações financeiras.
+#
+# Estrutura de herança utilizada:
+#   Transacao (classe base / pai)
+#   ├── Receita  (entrada de dinheiro, ex: salário, freelance)
+#   └── Despesa  (saída de dinheiro, ex: mercado, aluguel)
+#
+# Por que usar herança aqui?
+# Receita e Despesa compartilham os mesmos atributos (descrição, valor,
+# categoria, data) e as mesmas validações. A diferença está apenas no
+# tipo ('receita' ou 'despesa'). Com herança, evitamos repetição de código
+# e demonstramos polimorfismo: o método tipo() retorna valores diferentes
+# dependendo de qual subclasse está sendo usada.
+#
+# RESPONSÁVEL: Pessoa 2
+# =============================================================================
+
 from datetime import date
 
 
@@ -72,20 +92,22 @@ class Transacao:
 class Receita(Transacao):
     """
     Representa uma entrada de dinheiro.
-    Herda de Transacao.
+    Herda todos os atributos e validações de Transacao.
+    Sobrescreve apenas o método tipo().
     """
 
     def tipo(self) -> str:
-        """Retorna o tipo da transação."""
+        """Retorna o tipo da transação como string."""
         return "receita"
 
 
 class Despesa(Transacao):
     """
     Representa uma saída de dinheiro.
-    Herda de Transacao.
+    Herda todos os atributos e validações de Transacao.
+    Sobrescreve apenas o método tipo().
     """
 
     def tipo(self) -> str:
-        """Retorna o tipo da transação."""
+        """Retorna o tipo da transação como string."""
         return "despesa"
