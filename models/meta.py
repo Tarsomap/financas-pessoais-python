@@ -14,7 +14,7 @@
 #     espalhada pelo resto do código.
 #   - Uso de date.today() para comparações de data.
 #
-# RESPONSÁVEL: Pessoa 2
+# RESPONSÁVEL: Pessoa 3
 # =============================================================================
 
 from datetime import date
@@ -91,7 +91,6 @@ class Meta:
             Valor entre 0.0 e 100.0.
         """
         # TODO: Implementar
-        # Dica: (self._valor_atual / self._valor_alvo) * 100
         pass
 
     def esta_concluida(self) -> bool:
@@ -107,7 +106,6 @@ class Meta:
     def esta_atrasada(self) -> bool:
         """
         Verifica se a meta está atrasada.
-        Uma meta está atrasada se o prazo já passou e ela não foi concluída.
 
         Returns:
             True se prazo < date.today() e não está concluída.

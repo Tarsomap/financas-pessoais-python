@@ -23,7 +23,6 @@ class Categoria:
         _icone (str): Emoji representando a categoria.
     """
 
-    # Atributo de classe: lista de categorias padrão do sistema
     CATEGORIAS_PADRAO = [
         ("Alimentação", "🍔"),
         ("Transporte", "🚗"),
@@ -70,7 +69,7 @@ class Categoria:
         Returns:
             Lista de objetos Categoria.
         """
-        # TODO: Implementar usando CATEGORIAS_PADRAO
+        # TODO: Implementar
         # Dica: [Categoria(nome, icone) for nome, icone in cls.CATEGORIAS_PADRAO]
         pass
 
