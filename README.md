@@ -4,7 +4,13 @@ Sistema de gerenciamento de finanças pessoais desenvolvido em Python com interf
 
 ## 👥 Integrantes
 
-- (adicionar nomes do grupo)
+- Alice Santos Silva
+- João Guilherme Teles de Souza Lopes
+- João Guilherme Costa Carvalho
+- João Gustavo Lima dos Santos
+- Lívia Rodrigues Pinto
+- Tarso Monteiro Alves Passos
+- Vinicius Prado Sobral
 
 ## 📋 Descrição
 
