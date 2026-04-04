@@ -11,7 +11,7 @@
 #     a uma instância específica. Recebe 'cls' em vez de 'self'.
 #     Usado aqui para criar objetos Categoria a partir da lista padrão.
 #
-# RESPONSÁVEL: Pessoa 2
+# RESPONSÁVEL: João Gustavo
 # =============================================================================
 
 class Categoria:

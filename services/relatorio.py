@@ -17,7 +17,7 @@
 #   - Dicionários para agrupamento
 #   - max() com key= para encontrar maior valor
 #
-# RESPONSÁVEL: Pessoa 4
+# RESPONSÁVEL: Jigui
 # =============================================================================
 
 from models import Receita, Despesa

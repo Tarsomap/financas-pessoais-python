@@ -18,7 +18,7 @@
 #   - ttk.Treeview: tabela com colunas e linhas
 #   - OptionMenu: lista de seleção suspensa
 #
-# RESPONSÁVEL: Pessoa 6
+# RESPONSÁVEL: Lívia Unit Rodrigues
 # =============================================================================
 
 import tkinter as tk

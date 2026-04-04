@@ -16,7 +16,7 @@
 #     def test_algo(gerenciador):   <- gerenciador é injetado pela fixture
 #         gerenciador.adicionar_receita(...)  <- instância limpa
 #
-# RESPONSÁVEL: Pessoa 1 (Coordenador)
+# RESPONSÁVEL: Tarso (Coordenador)
 # =============================================================================
 
 import pytest

@@ -18,7 +18,7 @@
 #     command=lambda i=indice: self._depositar(i)
 #     (sem o i=indice, todos os botões usariam o último valor do loop)
 #
-# RESPONSÁVEL: Pessoa 7
+# RESPONSÁVEL: Alice
 # =============================================================================
 
 import tkinter as tk

@@ -18,7 +18,7 @@
 #   - List comprehension: usada nos métodos de filtro
 #   - Tratamento de exceções: IndexError ao remover índice inválido
 #
-# RESPONSÁVEL: Pessoa 3
+# RESPONSÁVEL: Vinicius
 # =============================================================================
 
 from datetime import date

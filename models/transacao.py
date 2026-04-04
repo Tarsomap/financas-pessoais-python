@@ -15,7 +15,7 @@
 # e demonstramos polimorfismo: o método tipo() retorna valores diferentes
 # dependendo de qual subclasse está sendo usada.
 #
-# RESPONSÁVEL: Pessoa 2
+# RESPONSÁVEL: João Gustavo
 # =============================================================================
 
 from datetime import date

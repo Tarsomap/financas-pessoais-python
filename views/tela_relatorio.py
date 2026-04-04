@@ -21,7 +21,7 @@
 #   - Chamada a @staticmethod da classe Relatorio
 #   - f-strings com :.2f para formatar valores monetários
 #
-# RESPONSÁVEL: Pessoa 7
+# RESPONSÁVEL: Alice
 # =============================================================================
 
 import tkinter as tk

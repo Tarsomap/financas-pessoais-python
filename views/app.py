@@ -17,7 +17,7 @@
 #   - protocol() para capturar o evento de fechar a janela
 #   - Composição: App contém instâncias de outras classes
 #
-# RESPONSÁVEL: Pessoa 6
+# RESPONSÁVEL: Lívia Unit Rodrigues
 # =============================================================================
 
 import tkinter as tk

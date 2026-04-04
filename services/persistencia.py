@@ -25,7 +25,7 @@
 #   - date.fromisoformat() para converter string em date
 #   - os.path para caminhos portáteis entre sistemas operacionais
 #
-# RESPONSÁVEL: Pessoa 5
+# RESPONSÁVEL: Joao Guilherme
 # =============================================================================
 
 import os

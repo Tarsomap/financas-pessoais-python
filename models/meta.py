@@ -14,7 +14,7 @@
 #     espalhada pelo resto do código.
 #   - Uso de date.today() para comparações de data.
 #
-# RESPONSÁVEL: Pessoa 3
+# RESPONSÁVEL: Vinicius
 # =============================================================================
 
 from datetime import date

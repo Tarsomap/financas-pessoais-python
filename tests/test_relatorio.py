@@ -14,7 +14,7 @@
 #   Saldo: 3500 - 930 = 2570
 #   Categoria top: Alimentação (750 de 930 = ~80%)
 #
-# RESPONSÁVEL: Pessoa 4
+# RESPONSÁVEL: Jigui
 # =============================================================================
 
 import pytest

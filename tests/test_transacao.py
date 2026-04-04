@@ -19,7 +19,7 @@
 #   Verifica que o bloco lança a exceção esperada.
 #   Se a exceção NÃO for lançada, o teste FALHA.
 #
-# RESPONSÁVEL: Pessoa 1 (Coordenador)
+# RESPONSÁVEL: Tarso (Coordenador)
 # =============================================================================
 
 import pytest
