@@ -1,136 +1,54 @@
-# =============================================================================
-# models/meta.py
-# -----------------------------------------------------------------------------
-# Define a classe Meta, que representa um objetivo financeiro do usuário.
-# Exemplos: "Guardar R$2000 para uma viagem até dezembro",
-#           "Juntar R$500 para um presente até o fim do mês".
-#
-# Conceitos demonstrados neste arquivo:
-#   - Encapsulamento: atributos privados (_valor_atual) com acesso
-#     controlado por @property. O valor atual não pode ser alterado
-#     diretamente — só através do método depositar().
-#   - Métodos que encapsulam regras de negócio: esta_concluida(),
-#     esta_atrasada() e status() evitam que essa lógica fique
-#     espalhada pelo resto do código.
-#   - Uso de date.today() para comparações de data.
-#
-# RESPONSÁVEL: Pessoa 2
-# =============================================================================
-
-from datetime import date
-
-
 class Meta:
-    """
-    Representa uma meta de economia.
 
-    Atributos:
-        _descricao (str): O que se deseja alcançar.
-        _valor_alvo (float): Valor a ser economizado.
-        _valor_atual (float): Quanto já foi economizado (começa em 0).
-        _prazo (date): Data limite para a meta.
-    """
+    def __init__(self, nome: str, valor_alvo: float, prazo: str = "Sem prazo"):
+        if not nome or not nome.strip():
+            raise ValueError("O nome da meta não pode ser vazio.")
+        if valor_alvo <= 0:
+            raise ValueError("O valor-alvo da meta deve ser maior que zero.")
 
-    def __init__(self, descricao: str, valor_alvo: float, prazo: date):
-        """
-        Inicializa uma Meta.
-
-        Args:
-            descricao: Descrição da meta.
-            valor_alvo: Valor total a atingir (deve ser > 0).
-            prazo: Data limite.
-
-        Raises:
-            ValueError: Se o valor_alvo for <= 0.
-            ValueError: Se o prazo for uma data no passado.
-        """
-        # TODO: Implementar validações e atribuições
-        # Dica: self._valor_atual começa em 0.0
-        pass
-
-    @property
-    def descricao(self) -> str:
-        # TODO: Implementar
-        pass
-
-    @property
-    def valor_alvo(self) -> float:
-        # TODO: Implementar
-        pass
-
-    @property
-    def valor_atual(self) -> float:
-        # TODO: Implementar
-        pass
-
-    @property
-    def prazo(self) -> date:
-        # TODO: Implementar
-        pass
+        self.nome = nome.strip()
+        self.valor_alvo = valor_alvo
+        self.valor_atual = 0.0
+        self.prazo = prazo
 
     def depositar(self, valor: float) -> None:
-        """
-        Adiciona valor ao progresso da meta.
-        O valor atual não pode ultrapassar o valor alvo.
+        if valor <= 0:
+            raise ValueError("O valor depositado deve ser maior que zero.")
+        self.valor_atual = min(self.valor_atual + valor, self.valor_alvo)
 
-        Args:
-            valor: Valor a depositar (deve ser > 0).
+    def progresso_percentual(self) -> float:
+        return (self.valor_atual / self.valor_alvo) * 100
 
-        Raises:
-            ValueError: Se o valor for <= 0.
-        """
-        # TODO: Implementar
-        # Dica: use min() para não ultrapassar o valor_alvo
-        pass
+    def valor_restante(self) -> float:
+        return self.valor_alvo - self.valor_atual
 
-    def percentual_concluido(self) -> float:
-        """
-        Calcula o percentual de conclusão da meta.
+    def concluida(self) -> bool:
+        return self.valor_atual >= self.valor_alvo
 
-        Returns:
-            Valor entre 0.0 e 100.0.
-        """
-        # TODO: Implementar
-        # Dica: (self._valor_atual / self._valor_alvo) * 100
-        pass
+    def __repr__(self) -> str:
+        status = "Concluída" if self.concluida() else f"{self.progresso_percentual():.1f}%"
+        return (
+            f"Meta(nome='{self.nome}', "
+            f"alvo=R${self.valor_alvo:.2f}, "
+            f"atual=R${self.valor_atual:.2f}, "
+            f"prazo='{self.prazo}', "
+            f"status='{status}')"
+        )
 
-    def esta_concluida(self) -> bool:
-        """
-        Verifica se a meta foi atingida.
+    def to_dict(self) -> dict:
+        return {
+            "nome": self.nome,
+            "valor_alvo": self.valor_alvo,
+            "valor_atual": self.valor_atual,
+            "prazo": self.prazo,
+        }
 
-        Returns:
-            True se valor_atual >= valor_alvo.
-        """
-        # TODO: Implementar
-        pass
-
-    def esta_atrasada(self) -> bool:
-        """
-        Verifica se a meta está atrasada.
-        Uma meta está atrasada se o prazo já passou e ela não foi concluída.
-
-        Returns:
-            True se prazo < date.today() e não está concluída.
-        """
-        # TODO: Implementar
-        pass
-
-    def status(self) -> str:
-        """
-        Retorna o status da meta como string legível.
-
-        Returns:
-            'concluída', 'atrasada' ou 'em andamento'.
-        """
-        # TODO: Implementar usando esta_concluida() e esta_atrasada()
-        pass
-
-    def para_dict(self) -> dict:
-        """Converte a meta para dicionário (usado na persistência)."""
-        # TODO: Implementar
-        pass
-
-    def __str__(self) -> str:
-        """Representação em string da meta."""
-        # TODO: Implementar
-        pass
+    @classmethod
+    def from_dict(cls, dados: dict) -> "Meta":
+        meta = cls(
+            nome=dados["nome"],
+            valor_alvo=float(dados["valor_alvo"]),
+            prazo=dados.get("prazo", "Sem prazo"),
+        )
+        meta.valor_atual = float(dados.get("valor_atual", 0.0))
+        return meta
