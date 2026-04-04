@@ -12,8 +12,8 @@
 | 1 | Tarso Monteiro Alves Passos | `main.py` · `tests/test_transacao.py` · `tests/test_gerenciador.py` |
 | 2 | João Gustavo Lima dos Santos | `models/transacao.py` · `models/categoria.py` |
 | 3 | Vinicius Prado Sobral | `models/meta.py` · `services/gerenciador.py` |
-| 4 | João Guilherme Teles de Souza Lopes | `services/relatorio.py` · `tests/test_relatorio.py` |
-| 5 | João Guilherme Costa Carvalho | `services/persistencia.py` |
+| 4 | João Guilherme Costa Carvalho | `services/relatorio.py` · `tests/test_relatorio.py` |
+| 5 | João Guilherme Teles de Souza Lopes | `services/persistencia.py` |
 | 6 | Lívia Rodrigues Pinto | `views/app.py` · `views/tela_transacoes.py` |
 | 7 | Alice Santos Silva | `views/tela_metas.py` · `views/tela_relatorio.py` |
 
