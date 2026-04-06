@@ -1,113 +1,56 @@
-# =============================================================================
 # models/transacao.py
-# -----------------------------------------------------------------------------
-# Define as classes que representam transações financeiras.
-#
-# Estrutura de herança utilizada:
-#   Transacao (classe base / pai)
-#   ├── Receita  (entrada de dinheiro, ex: salário, freelance)
-#   └── Despesa  (saída de dinheiro, ex: mercado, aluguel)
-#
-# Por que usar herança aqui?
-# Receita e Despesa compartilham os mesmos atributos (descrição, valor,
-# categoria, data) e as mesmas validações. A diferença está apenas no
-# tipo ('receita' ou 'despesa'). Com herança, evitamos repetição de código
-# e demonstramos polimorfismo: o método tipo() retorna valores diferentes
-# dependendo de qual subclasse está sendo usada.
-#
 # RESPONSÁVEL: Pessoa 2
-# =============================================================================
 
 from datetime import date
 
 
 class Transacao:
-    """
-    Classe base que representa uma transação financeira.
+    def __init__(self, descricao: str, valor: float, categoria, data: date = None):
+        if not descricao or not descricao.strip():
+            raise ValueError("A descrição não pode ser vazia.")
+        if valor <= 0:
+            raise ValueError("O valor deve ser maior que zero.")
 
-    Atributos:
-        _descricao (str): Descrição da transação.
-        _valor (float): Valor da transação (deve ser positivo).
-        _categoria (str): Categoria da transação.
-        _data (date): Data da transação.
-    """
-
-    def __init__(self, descricao: str, valor: float, categoria: str, data: date = None):
-        """
-        Inicializa uma Transacao.
-
-        Args:
-            descricao: Texto descrevendo a transação.
-            valor: Valor monetário (deve ser > 0).
-            categoria: Categoria da transação.
-            data: Data da transação. Se None, usa a data de hoje.
-
-        Raises:
-            ValueError: Se o valor for menor ou igual a zero.
-            ValueError: Se a descrição estiver vazia.
-        """
-        # TODO: Implementar validações e atribuições
-        pass
+        self._descricao = descricao.strip()
+        self._valor = float(valor)
+        self._categoria = categoria
+        self._data = data if data is not None else date.today()
 
     @property
     def descricao(self) -> str:
-        """Retorna a descrição da transação."""
-        # TODO: Implementar
-        pass
+        return self._descricao
 
     @property
     def valor(self) -> float:
-        """Retorna o valor da transação."""
-        # TODO: Implementar
-        pass
+        return self._valor
 
     @property
-    def categoria(self) -> str:
-        """Retorna a categoria da transação."""
-        # TODO: Implementar
-        pass
+    def categoria(self):
+        return self._categoria
 
     @property
     def data(self) -> date:
-        """Retorna a data da transação."""
-        # TODO: Implementar
-        pass
+        return self._data
 
     def para_dict(self) -> dict:
-        """
-        Converte a transação para dicionário (usado na persistência).
-
-        Returns:
-            Dicionário com os dados da transação.
-        """
-        # TODO: Implementar
-        pass
+        return {
+            "tipo":      self.tipo(),
+            "descricao": self._descricao,
+            "valor":     self._valor,
+            "categoria": self._categoria.nome,
+            "data":      self._data.isoformat(),
+        }
 
     def __str__(self) -> str:
-        """Representação em string da transação."""
-        # TODO: Implementar
-        pass
+        return (f"[{self.tipo().upper()}] {self._descricao} | "
+                f"R$ {self._valor:.2f} | {self._categoria} | {self._data}")
 
 
 class Receita(Transacao):
-    """
-    Representa uma entrada de dinheiro.
-    Herda todos os atributos e validações de Transacao.
-    Sobrescreve apenas o método tipo().
-    """
-
     def tipo(self) -> str:
-        """Retorna o tipo da transação como string."""
         return "receita"
 
 
 class Despesa(Transacao):
-    """
-    Representa uma saída de dinheiro.
-    Herda todos os atributos e validações de Transacao.
-    Sobrescreve apenas o método tipo().
-    """
-
     def tipo(self) -> str:
-        """Retorna o tipo da transação como string."""
         return "despesa"

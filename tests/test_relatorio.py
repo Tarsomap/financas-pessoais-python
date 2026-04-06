@@ -1,113 +1,99 @@
-# =============================================================================
 # tests/test_relatorio.py
-# -----------------------------------------------------------------------------
-# Testes unitários para a classe Relatorio.
-#
-# Por que Relatorio é fácil de testar?
-#   Todos os métodos são @staticmethod e recebem dados como parâmetro.
-#   Não há estado interno nem dependências externas (banco de dados,
-#   arquivo, interface gráfica). Dado o mesmo input, sempre retornam
-#   o mesmo output — isso é uma função pura.
-#
-# Fixture 'transacoes_abril':
-#   Uma lista fixa de transações com valores conhecidos.
-#   Usamos ela em vários testes para garantir que os cálculos
-#   estão corretos. Como os valores são fixos, sabemos exatamente
-#   o resultado esperado:
-#     Receitas: 3000 + 500 = 3500
-#     Despesas: 600 + 150 + 80 + 100 = 930
-#     Saldo: 3500 - 930 = 2570
-#     Categoria mais gasta: Alimentação (750 de 930 = ~80%)
-# =============================================================================
+# RESPONSÁVEL: Pessoa 4
+# Execute: python -m pytest tests/test_relatorio.py -v
 
-import pytest
 from datetime import date
-from models import Receita, Despesa
-from services import Relatorio
+from models.categoria import Categoria
+from models.transacao import Receita, Despesa
+from services.relatorio import Relatorio
+
+# Dados usados em todos os testes
+alimentacao = Categoria("Alimentação", "🍔")
+transporte  = Categoria("Transporte",  "🚗")
+salario     = Categoria("Salário",     "💼")
+
+transacoes = [
+    Receita("Salário",  3000.00, salario,     date(2025, 4, 1)),
+    Despesa("Mercado",  1200.00, alimentacao, date(2025, 4, 5)),
+    Despesa("Gasolina",  600.00, transporte,  date(2025, 4, 10)),
+    # Mês anterior (março)
+    Receita("Salário",  2500.00, salario,     date(2025, 3, 1)),
+    Despesa("Mercado",   800.00, alimentacao, date(2025, 3, 5)),
+]
+
+rel = Relatorio(transacoes)
+rel_vazio = Relatorio([])
 
 
-@pytest.fixture
-def transacoes_abril():
-    """Lista fixa de transações de abril/2026 para os testes."""
-    return [
-        Receita("Salário", 3000.0, "Salário", date(2026, 4, 1)),
-        Receita("Freelance", 500.0, "Salário", date(2026, 4, 10)),
-        Despesa("Mercado", 600.0, "Alimentação", date(2026, 4, 2)),
-        Despesa("Restaurante", 150.0, "Alimentação", date(2026, 4, 5)),
-        Despesa("Uber", 80.0, "Transporte", date(2026, 4, 3)),
-        Despesa("Academia", 100.0, "Saúde", date(2026, 4, 4)),
+# --- total_receitas_mes ---
+
+def test_total_receitas():
+    assert rel.total_receitas_mes(2025, 4) == 3000.00
+
+def test_total_receitas_vazio():
+    assert rel_vazio.total_receitas_mes(2025, 4) == 0.0
+
+
+# --- total_despesas_mes ---
+
+def test_total_despesas():
+    assert rel.total_despesas_mes(2025, 4) == 1800.00
+
+def test_total_despesas_vazio():
+    assert rel_vazio.total_despesas_mes(2025, 4) == 0.0
+
+
+# --- saldo_mes ---
+
+def test_saldo():
+    assert rel.saldo_mes(2025, 4) == 1200.00
+
+def test_saldo_negativo():
+    t = [Despesa("Aluguel", 2000.00, alimentacao, date(2025, 4, 1))]
+    assert Relatorio(t).saldo_mes(2025, 4) == -2000.00
+
+
+# --- gastos_por_categoria ---
+
+def test_gastos_por_categoria():
+    g = rel.gastos_por_categoria(2025, 4)
+    assert g["Alimentação"] == 1200.00
+    assert g["Transporte"]  == 600.00
+
+def test_gastos_nao_inclui_receitas():
+    g = rel.gastos_por_categoria(2025, 4)
+    assert "Salário" not in g
+
+
+# --- comparativo_mensal ---
+
+def test_comparativo():
+    c = rel.comparativo_mensal(2025, 4)
+    assert c["despesa_atual"]    == 1800.00
+    assert c["despesa_anterior"] == 800.00
+    assert c["variacao_despesa"] == 1000.00
+
+def test_comparativo_virada_ano():
+    t = [
+        Despesa("Luz", 100.00, alimentacao, date(2024, 12, 1)),
+        Despesa("Luz", 150.00, alimentacao, date(2025,  1, 1)),
     ]
+    c = Relatorio(t).comparativo_mensal(2025, 1)
+    assert c["despesa_anterior"] == 100.00
+    assert c["despesa_atual"]    == 150.00
 
 
-class TestTotais:
+# --- sugestoes_corte ---
 
-    def test_total_receitas(self, transacoes_abril):
-        """Deve somar apenas as receitas."""
-        assert Relatorio.total_receitas(transacoes_abril) == 3500.0
+def test_sugestao_categoria_pesada():
+    # Alimentação = 67% do total → deve aparecer
+    s = [x["categoria"] for x in rel.sugestoes_corte(2025, 4)]
+    assert "Alimentação" in s
 
-    def test_total_despesas(self, transacoes_abril):
-        """Deve somar apenas as despesas."""
-        assert Relatorio.total_despesas(transacoes_abril) == 930.0
+def test_sugestao_vazia():
+    assert rel_vazio.sugestoes_corte(2025, 4) == []
 
-    def test_saldo(self, transacoes_abril):
-        """Saldo deve ser receitas - despesas."""
-        assert Relatorio.saldo(transacoes_abril) == 2570.0
-
-    def test_lista_vazia_retorna_zero(self):
-        """Com lista vazia, todos os totais devem ser 0."""
-        assert Relatorio.total_receitas([]) == 0.0
-        assert Relatorio.total_despesas([]) == 0.0
-        assert Relatorio.saldo([]) == 0.0
-
-
-class TestCategorias:
-
-    def test_gastos_por_categoria(self, transacoes_abril):
-        """Deve agrupar despesas por categoria corretamente."""
-        gastos = Relatorio.gastos_por_categoria(transacoes_abril)
-        assert gastos["Alimentação"] == 750.0
-        assert gastos["Transporte"] == 80.0
-        assert gastos["Saúde"] == 100.0
-        assert "Salário" not in gastos  # Receita não deve entrar
-
-    def test_categoria_mais_gasta(self, transacoes_abril):
-        """Deve retornar a categoria com maior gasto."""
-        assert Relatorio.categoria_mais_gasta(transacoes_abril) == "Alimentação"
-
-    def test_categoria_mais_gasta_sem_despesas(self):
-        """Sem despesas, deve retornar 'Nenhuma'."""
-        receitas = [Receita("Salário", 1000.0, "Salário")]
-        assert Relatorio.categoria_mais_gasta(receitas) == "Nenhuma"
-
-
-class TestResumoMensal:
-
-    def test_resumo_mensal_abril(self, transacoes_abril):
-        """Resumo de abril deve bater com os valores da fixture."""
-        resumo = Relatorio.resumo_mensal(transacoes_abril, mes=4, ano=2026)
-        assert resumo["receitas"] == 3500.0
-        assert resumo["despesas"] == 930.0
-        assert resumo["saldo"] == 2570.0
-        assert "por_categoria" in resumo
-
-    def test_resumo_mes_sem_transacoes(self, transacoes_abril):
-        """Mês sem transações deve retornar zeros."""
-        resumo = Relatorio.resumo_mensal(transacoes_abril, mes=1, ano=2026)
-        assert resumo["receitas"] == 0.0
-        assert resumo["despesas"] == 0.0
-
-
-class TestSugestaoCorte:
-
-    def test_sugestao_identifica_categoria_alta(self, transacoes_abril):
-        """
-        Alimentação representa ~80% das despesas (750/930).
-        Deve aparecer na sugestão com limite de 30%.
-        """
-        sugestoes = Relatorio.sugestao_corte(transacoes_abril, limite_percentual=30.0)
-        assert any("Alimentação" in s for s in sugestoes)
-
-    def test_sugestao_vazia_sem_despesas(self):
-        """Sem despesas, não deve haver sugestões."""
-        receitas = [Receita("Salário", 1000.0, "Salário")]
-        assert Relatorio.sugestao_corte(receitas) == []
+def test_sugestao_economia_20_porcento():
+    sugestoes = rel.sugestoes_corte(2025, 4)
+    alim = next(x for x in sugestoes if x["categoria"] == "Alimentação")
+    assert alim["economia_sugerida"] == 240.00

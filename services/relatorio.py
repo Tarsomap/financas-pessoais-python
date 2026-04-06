@@ -1,144 +1,86 @@
-# =============================================================================
 # services/relatorio.py
-# -----------------------------------------------------------------------------
-# Responsável por calcular análises e relatórios financeiros.
-#
-# Todos os métodos são @staticmethod — isso significa que não precisam
-# de uma instância da classe para funcionar. Eles recebem os dados
-# como parâmetro e retornam um resultado, sem modificar nenhum estado.
-# Esse padrão é chamado de 'função pura' e tem uma vantagem enorme:
-# é extremamente fácil de testar, porque dado o mesmo input,
-# sempre retorna o mesmo output.
-#
-# Conceitos demonstrados neste arquivo:
-#   - @staticmethod: métodos sem acesso ao 'self' ou 'cls'
-#   - isinstance(): verificar se um objeto é de uma classe específica
-#   - sum() com list comprehension: somar valores filtrados
-#   - Dicionários para agrupamento de dados
-#   - max() com key= para encontrar o maior valor de um dicionário
-#
 # RESPONSÁVEL: Pessoa 4
-# =============================================================================
 
-from models import Receita, Despesa
+from models.transacao import Receita, Despesa
 
 
 class Relatorio:
-    """
-    Responsável por calcular análises e relatórios financeiros.
-    Todas as funções são puras (recebem dados, retornam resultado).
-    """
+    def __init__(self, transacoes: list):
+        # Guarda a lista de transações recebida do Gerenciador
+        self._transacoes = transacoes
 
-    @staticmethod
-    def total_receitas(transacoes: list) -> float:
-        """
-        Soma o valor de todas as Receitas na lista.
+    def _do_mes(self, ano: int, mes: int) -> list:
+        # Filtra apenas as transações do mês/ano pedido
+        return [t for t in self._transacoes if t.data.year == ano and t.data.month == mes]
 
-        Args:
-            transacoes: Lista de objetos Transacao.
+    # --- Totais do mês ---
 
-        Returns:
-            Total das receitas (0.0 se não houver nenhuma).
-        """
-        # TODO: Implementar usando isinstance() para filtrar só Receitas
-        # Dica: sum(t.valor for t in transacoes if isinstance(t, Receita))
-        pass
+    def total_receitas_mes(self, ano: int, mes: int) -> float:
+        # Soma só as Receitas do mês
+        return sum(t.valor for t in self._do_mes(ano, mes) if isinstance(t, Receita))
 
-    @staticmethod
-    def total_despesas(transacoes: list) -> float:
-        """
-        Soma o valor de todas as Despesas na lista.
+    def total_despesas_mes(self, ano: int, mes: int) -> float:
+        # Soma só as Despesas do mês
+        return sum(t.valor for t in self._do_mes(ano, mes) if isinstance(t, Despesa))
 
-        Returns:
-            Total das despesas (0.0 se não houver nenhuma).
-        """
-        # TODO: Implementar
-        pass
+    def saldo_mes(self, ano: int, mes: int) -> float:
+        # Saldo = receitas - despesas (pode ser negativo)
+        return self.total_receitas_mes(ano, mes) - self.total_despesas_mes(ano, mes)
 
-    @staticmethod
-    def saldo(transacoes: list) -> float:
-        """
-        Calcula o saldo: receitas - despesas.
+    # --- Gastos por categoria ---
 
-        Returns:
-            Saldo como float (pode ser negativo).
-        """
-        # TODO: Implementar usando total_receitas() e total_despesas()
-        pass
+    def gastos_por_categoria(self, ano: int, mes: int) -> dict:
+        totais = {}
+        for t in self._do_mes(ano, mes):
+            if isinstance(t, Despesa):
+                nome = t.categoria.nome
+                # Acumula o valor; se a chave não existe, começa do zero
+                totais[nome] = totais.get(nome, 0) + t.valor
+        return totais
 
-    @staticmethod
-    def gastos_por_categoria(transacoes: list) -> dict:
-        """
-        Agrupa o total gasto por categoria (apenas Despesas).
+    # --- Comparativo com o mês anterior ---
 
-        Returns:
-            Dicionário {categoria: total_gasto}.
-            Exemplo: {'Alimentação': 350.0, 'Transporte': 120.0}
-        """
-        # TODO: Implementar
-        # Dica: crie um dicionário vazio e percorra as transações
-        # Para cada Despesa, some o valor na chave da categoria
-        pass
+    def comparativo_mensal(self, ano: int, mes: int) -> dict:
+        # Trata a virada de ano: janeiro → dezembro do ano anterior
+        if mes == 1:
+            ano_ant, mes_ant = ano - 1, 12
+        else:
+            ano_ant, mes_ant = ano, mes - 1
 
-    @staticmethod
-    def categoria_mais_gasta(transacoes: list) -> str:
-        """
-        Retorna o nome da categoria com maior gasto.
+        rec_atual  = self.total_receitas_mes(ano, mes)
+        rec_ant    = self.total_receitas_mes(ano_ant, mes_ant)
+        desp_atual = self.total_despesas_mes(ano, mes)
+        desp_ant   = self.total_despesas_mes(ano_ant, mes_ant)
 
-        Returns:
-            Nome da categoria ou 'Nenhuma' se não houver despesas.
-        """
-        # TODO: Implementar usando gastos_por_categoria()
-        # Dica: max(gastos, key=gastos.get) retorna a chave com maior valor
-        pass
+        return {
+            "receita_atual":    rec_atual,
+            "receita_anterior": rec_ant,
+            "variacao_receita": round(rec_atual - rec_ant, 2),   # positivo = ganhou mais
+            "despesa_atual":    desp_atual,
+            "despesa_anterior": desp_ant,
+            "variacao_despesa": round(desp_atual - desp_ant, 2), # positivo = gastou mais
+        }
 
-    @staticmethod
-    def transacoes_por_mes(transacoes: list) -> dict:
-        """
-        Agrupa transações por mês/ano.
+    # --- Sugestões de corte ---
 
-        Returns:
-            Dicionário {(ano, mes): [transacoes]}.
-            Exemplo: {(2026, 3): [...], (2026, 4): [...]}
-        """
-        # TODO: Implementar
-        # Dica: use t.data.month e t.data.year como chave da tupla
-        pass
+    def sugestoes_corte(self, ano: int, mes: int, limite: float = 30.0) -> list:
+        gastos = self.gastos_por_categoria(ano, mes)
+        total = sum(gastos.values())
 
-    @staticmethod
-    def resumo_mensal(transacoes: list, mes: int, ano: int) -> dict:
-        """
-        Retorna resumo financeiro de um mês específico.
+        if total == 0:
+            return []
 
-        Returns:
-            Dicionário com:
-            {
-                'receitas': float,
-                'despesas': float,
-                'saldo': float,
-                'por_categoria': dict
-            }
-        """
-        # TODO: Implementar
-        # Dica: filtre as transações pelo mês e ano, depois use os outros métodos
-        pass
+        sugestoes = []
+        for categoria, gasto in gastos.items():
+            pct = gasto / total * 100
+            # Sinaliza categorias que passaram o limite do total de despesas
+            if pct >= limite:
+                sugestoes.append({
+                    "categoria":         categoria,
+                    "gasto":             round(gasto, 2),
+                    "percentual":        round(pct, 2),
+                    "economia_sugerida": round(gasto * 0.20, 2), # sugere cortar 20%
+                })
 
-    @staticmethod
-    def sugestao_corte(transacoes: list, limite_percentual: float = 30.0) -> list:
-        """
-        Sugere categorias para corte de gastos.
-        Uma categoria é sugerida se representa mais de limite_percentual %
-        do total de despesas.
-
-        Args:
-            transacoes: Lista de transações.
-            limite_percentual: Percentual acima do qual a categoria é sugerida.
-
-        Returns:
-            Lista de strings com as sugestões.
-            Exemplo: ['Alimentação representa 45% dos seus gastos.']
-        """
-        # TODO: Implementar
-        # Dica: calcule o total de despesas, depois para cada categoria
-        # verifique se (gasto_categoria / total_despesas * 100) > limite_percentual
-        pass
+        # Ordena da categoria mais pesada para a mais leve
+        return sorted(sugestoes, key=lambda x: x["gasto"], reverse=True)
