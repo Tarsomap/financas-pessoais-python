@@ -1,11 +1,18 @@
-class Meta:
+# models/meta.py
+# RESPONSÁVEL: Pessoa 3 (Vinicius Prado Sobral)
 
-    def __init__(self, nome: str, valor_alvo: float, prazo: str = "Sem prazo"):
+# CORREÇÃO: importado date para suportar prazo como objeto date
+# (os testes passam date(2026, 12, 31) e a persistência usa date.fromisoformat)
+from datetime import date
+
+
+class Meta:
+    def __init__(self, nome: str, valor_alvo: float, prazo="Sem prazo"):
+        # CORREÇÃO: prazo aceita tanto str quanto date (era prazo: str = "Sem prazo")
         if not nome or not nome.strip():
             raise ValueError("O nome da meta não pode ser vazio.")
         if valor_alvo <= 0:
             raise ValueError("O valor-alvo da meta deve ser maior que zero.")
-
         self.nome = nome.strip()
         self.valor_alvo = valor_alvo
         self.valor_atual = 0.0
@@ -36,19 +43,28 @@ class Meta:
         )
 
     def to_dict(self) -> dict:
+        # CORREÇÃO: prazo pode ser date ou str; isoformat() só existe em objetos date
+        prazo_str = self.prazo.isoformat() if hasattr(self.prazo, "isoformat") else str(self.prazo)
         return {
-            "nome": self.nome,
-            "valor_alvo": self.valor_alvo,
+            "nome":        self.nome,
+            "valor_alvo":  self.valor_alvo,
             "valor_atual": self.valor_atual,
-            "prazo": self.prazo,
+            "prazo":       prazo_str,
         }
 
     @classmethod
     def from_dict(cls, dados: dict) -> "Meta":
+        # CORREÇÃO: tenta converter prazo para date; mantém string se não for possível
+        prazo_raw = dados.get("prazo", "Sem prazo")
+        try:
+            prazo = date.fromisoformat(prazo_raw)
+        except (ValueError, AttributeError, TypeError):
+            prazo = prazo_raw
+
         meta = cls(
             nome=dados["nome"],
             valor_alvo=float(dados["valor_alvo"]),
-            prazo=dados.get("prazo", "Sem prazo"),
+            prazo=prazo,
         )
         meta.valor_atual = float(dados.get("valor_atual", 0.0))
         return meta

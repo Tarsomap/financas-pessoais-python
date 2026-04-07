@@ -11,6 +11,7 @@
 #   - List comprehensions: usadas nos filtros e no cálculo de saldo
 #   - Tratamento de exceções: IndexError e ValueError com mensagens claras
 #   - Separação de responsabilidades: lógica de negócio isolada da view
+#   - Polimorfismo: adicionar_receita/despesa aceitam objeto ou parâmetros
 #
 # RESPONSÁVEL: Pessoa 3 (Vinicius Prado Sobral)
 # =============================================================================
@@ -38,90 +39,97 @@ class Gerenciador:
     # TRANSAÇÕES
     # -------------------------------------------------------------------------
 
-    def adicionar_receita(
-        self,
-        descricao: str,
-        valor: float,
-        categoria: str,
-        data: date = None,
-    ) -> Receita:
+    def adicionar_receita(self, descricao_ou_objeto, valor=None, categoria=None, data=None) -> Receita:
         """
         Cria uma Receita e a registra na lista de transações.
 
+        Aceita dois modos de chamada:
+          Modo 1 — separado (usado nos testes):
+            adicionar_receita("Salário", 3000.0, "Salário", date(2026, 4, 1))
+          Modo 2 — objeto pronto (usado pelas views):
+            adicionar_receita(objeto_Receita)
+
         Parâmetros:
-            descricao (str)       : descrição da receita (ex.: "Salário")
-            valor     (float)     : valor positivo em reais
-            categoria (str)       : categoria (ex.: "Salário", "Freelance")
-            data      (date, opt) : data da transação; usa date.today() se None
+            descricao_ou_objeto : str com a descrição OU objeto Receita já criado
+            valor     (float)   : valor positivo em reais (Modo 1)
+            categoria (str)     : categoria da receita (Modo 1)
+            data      (date)    : data da transação, padrão date.today() (Modo 1)
 
         Retorna:
-            Objeto Receita recém-criado.
+            Objeto Receita registrado.
 
         Lança:
             ValueError se descrição vazia ou valor <= 0 (vem do model Transacao).
         """
-        receita = Receita(descricao, valor, categoria, data)
+        if isinstance(descricao_ou_objeto, Receita):
+            # Modo 2: view já construiu o objeto, só registra
+            self._transacoes.append(descricao_ou_objeto)
+            return descricao_ou_objeto
+        # Modo 1: constrói o objeto com os parâmetros separados
+        receita = Receita(descricao_ou_objeto, valor, categoria, data)
         self._transacoes.append(receita)
         return receita
 
-    def adicionar_despesa(
-        self,
-        descricao: str,
-        valor: float,
-        categoria: str,
-        data: date = None,
-    ) -> Despesa:
+    def adicionar_despesa(self, descricao_ou_objeto, valor=None, categoria=None, data=None) -> Despesa:
         """
         Cria uma Despesa e a registra na lista de transações.
 
-        Parâmetros:
-            descricao (str)       : descrição da despesa (ex.: "Mercado")
-            valor     (float)     : valor positivo em reais
-            categoria (str)       : categoria (ex.: "Alimentação", "Transporte")
-            data      (date, opt) : data da transação; usa date.today() se None
+        Aceita dois modos de chamada (mesma lógica de adicionar_receita):
+          Modo 1 — separado (usado nos testes):
+            adicionar_despesa("Mercado", 200.0, "Alimentação", date(2026, 4, 1))
+          Modo 2 — objeto pronto (usado pelas views):
+            adicionar_despesa(objeto_Despesa)
 
         Retorna:
-            Objeto Despesa recém-criado.
+            Objeto Despesa registrado.
 
         Lança:
             ValueError se descrição vazia ou valor <= 0 (vem do model Transacao).
         """
-        despesa = Despesa(descricao, valor, categoria, data)
+        if isinstance(descricao_ou_objeto, Despesa):
+            # Modo 2: view já construiu o objeto, só registra
+            self._transacoes.append(descricao_ou_objeto)
+            return descricao_ou_objeto
+        # Modo 1: constrói o objeto com os parâmetros separados
+        despesa = Despesa(descricao_ou_objeto, valor, categoria, data)
         self._transacoes.append(despesa)
         return despesa
 
-    def remover_transacao(self, indice: int) -> None:
+    def remover_transacao(self, indice: int) -> bool:
         """
         Remove a transação na posição `indice` da lista (0-based).
+
+        A Treeview exibe as transações com um índice sequencial (0, 1, 2...)
+        que corresponde diretamente à posição na lista interna. Ao selecionar
+        e remover, a view passa esse índice aqui.
 
         Parâmetros:
             indice (int): posição da transação a remover
 
+        Retorna:
+            True se removida com sucesso.
+
         Lança:
             IndexError se o índice estiver fora do intervalo da lista.
         """
-        if indice < 0 or indice >= len(self._transacoes):
+        if not isinstance(indice, int) or indice < 0 or indice >= len(self._transacoes):
             raise IndexError(f"Índice {indice} fora do intervalo.")
         del self._transacoes[indice]
+        return True
 
-    def listar_transacoes(
-        self,
-        tipo: str = None,
-        categoria: str = None,
-    ) -> list:
+    def listar_transacoes(self, tipo: str = None, categoria: str = None) -> list:
         """
-        Retorna todas as transações, com filtros opcionais.
+        Retorna todas as transações com filtros opcionais.
+
+        Usa list comprehension para filtrar em uma linha — conceito
+        de programação funcional aplicado ao Python.
 
         Parâmetros:
-            tipo      (str, opt) : "receita" ou "despesa"
-            categoria (str, opt) : nome exato da categoria
+            tipo      (str, opt): "receita" ou "despesa"
+            categoria (str, opt): nome exato da categoria
 
         Retorna:
             Lista de transações que satisfazem os filtros informados.
-            Sem filtros, retorna todas as transações.
-
-        Exemplo de uso com list comprehension interna:
-            [t for t in resultado if t.tipo() == tipo]
         """
         resultado = list(self._transacoes)
 
@@ -140,33 +148,35 @@ class Gerenciador:
         """
         Calcula o saldo atual: total de receitas menos total de despesas.
 
-        Usa list comprehension + sum() para percorrer as transações em uma linha.
-        O resultado pode ser negativo se as despesas superarem as receitas.
+        Usa list comprehension + sum() — forma pythônica de somar valores
+        de uma lista filtrada sem precisar de variável de loop explícita.
 
         Retorna:
-            float com o saldo atual.
+            float com o saldo atual (pode ser negativo).
         """
         receitas = sum(t.valor for t in self._transacoes if t.tipo() == "receita")
         despesas = sum(t.valor for t in self._transacoes if t.tipo() == "despesa")
         return receitas - despesas
 
+    def calcular_saldo(self) -> float:
+        """
+        Alias de saldo_atual() para compatibilidade com as views.
+        Mantém retrocompatibilidade sem duplicar lógica.
+        """
+        return self.saldo_atual()
+
     # -------------------------------------------------------------------------
     # METAS
     # -------------------------------------------------------------------------
 
-    def adicionar_meta(
-        self,
-        nome: str,
-        valor_alvo: float,
-        prazo: date,
-    ) -> Meta:
+    def adicionar_meta(self, nome: str, valor_alvo: float, prazo) -> Meta:
         """
         Cria uma Meta de economia e a registra na lista de metas.
 
         Parâmetros:
-            nome       (str)   : nome descritivo da meta (ex.: "Viagem")
-            valor_alvo (float) : valor total que se deseja atingir
-            prazo      (date)  : data limite para alcançar a meta
+            nome       (str)         : nome descritivo (ex.: "Viagem")
+            valor_alvo (float)       : valor total que se deseja atingir
+            prazo      (date ou str) : data limite para alcançar a meta
 
         Retorna:
             Objeto Meta recém-criado.
@@ -177,24 +187,21 @@ class Gerenciador:
         nomes_existentes = [m.nome.lower() for m in self._metas]
         if nome.strip().lower() in nomes_existentes:
             raise ValueError(f"Já existe uma meta com o nome '{nome}'.")
-
         meta = Meta(nome, valor_alvo, prazo)
         self._metas.append(meta)
         return meta
 
-    def remover_meta(self, indice: int) -> None:
+    def remover_meta(self, indice: int) -> bool:
         """
         Remove a meta na posição `indice` da lista (0-based).
 
-        Parâmetros:
-            indice (int): posição da meta a remover
-
         Lança:
-            IndexError se o índice estiver fora do intervalo da lista.
+            IndexError se o índice estiver fora do intervalo.
         """
         if indice < 0 or indice >= len(self._metas):
             raise IndexError(f"Índice {indice} fora do intervalo.")
         del self._metas[indice]
+        return True
 
     def listar_metas(self) -> List[Meta]:
         """Retorna cópia da lista de metas cadastradas."""
@@ -205,7 +212,7 @@ class Gerenciador:
         Busca uma meta pelo nome (case-insensitive).
 
         Retorna:
-            Objeto Meta encontrado ou None se não existir.
+            Objeto Meta ou None se não encontrar.
         """
         for meta in self._metas:
             if meta.nome.lower() == nome.strip().lower():
@@ -213,12 +220,7 @@ class Gerenciador:
         return None
 
     def depositar_em_meta(self, nome: str, valor: float) -> None:
-        """
-        Deposita um valor em uma meta existente.
-
-        Lança:
-            ValueError se a meta não for encontrada.
-        """
+        """Deposita um valor em uma meta existente pelo nome."""
         meta = self.buscar_meta(nome)
         if meta is None:
             raise ValueError(f"Meta '{nome}' não encontrada.")
@@ -233,33 +235,48 @@ class Gerenciador:
         return [m for m in self._metas if not m.concluida()]
 
     # -------------------------------------------------------------------------
-    # PERSISTÊNCIA (auxiliar para services/persistencia.py)
+    # PERSISTÊNCIA — auxiliar para services/persistencia.py e views/app.py
     # -------------------------------------------------------------------------
+
+    def carregar_transacoes(self, lista_transacoes: list) -> None:
+        """
+        Carrega transações restauradas do arquivo ao iniciar o app.
+        Chamado por app.py em _carregar_dados() logo após Persistencia.carregar().
+
+        Parâmetros:
+            lista_transacoes (list): objetos Receita e Despesa reconstruídos
+                                     pela camada de persistência.
+        """
+        self._transacoes = list(lista_transacoes)
+
+    def carregar_metas(self, lista) -> None:
+        """
+        Carrega metas restauradas do arquivo ao iniciar o app.
+        Aceita lista de objetos Meta ou lista de dicionários (from_dict).
+
+        Parâmetros:
+            lista: lista de objetos Meta ou lista de dicts serializados.
+        """
+        if lista and isinstance(lista[0], dict):
+            self._metas = [Meta.from_dict(d) for d in lista]
+        else:
+            self._metas = list(lista)
+
+    def get_transacoes(self) -> list:
+        """Retorna todas as transações — usado por app.py ao fechar para salvar."""
+        return list(self._transacoes)
+
+    def get_metas(self) -> list:
+        """Retorna todas as metas — usado por app.py ao fechar para salvar."""
+        return list(self._metas)
+
+    def metas_para_salvar(self) -> List[dict]:
+        """Serializa as metas para persistência em arquivo."""
+        return [m.to_dict() for m in self._metas]
 
     def resumo(self) -> dict:
         """Retorna dicionário com totais gerais do sistema."""
         return {
             "total_transacoes": len(self._transacoes),
             "total_metas":      len(self._metas),
-            "metas_concluidas": len(self.metas_concluidas()),
-            "metas_pendentes":  len(self.metas_pendentes()),
-        }
-
-    def metas_para_salvar(self) -> List[dict]:
-        """Serializa as metas para persistência em arquivo."""
-        return [m.to_dict() for m in self._metas]
-
-    def carregar_metas(self, lista_dicts: List[dict]) -> None:
-        """Desserializa e carrega metas a partir de lista de dicionários."""
-        self._metas = [Meta.from_dict(d) for d in lista_dicts]
-
-def carregar_transacoes(self, lista_transacoes: list) -> None:
-    """
-    Carrega transações previamente persistidas de volta para a memória.
-    Chamado pela view ao iniciar o app, restaurando o estado salvo em arquivo.
-
-    Parâmetros:
-        lista_transacoes (list): lista de objetos Receita e Despesa
-                                 reconstruídos pela camada de persistência.
-    """
-    self._transacoes = list(lista_transacoes)
+            
