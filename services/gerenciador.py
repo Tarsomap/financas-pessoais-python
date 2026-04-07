@@ -279,4 +279,4 @@ class Gerenciador:
         return {
             "total_transacoes": len(self._transacoes),
             "total_metas":      len(self._metas),
-            
+        }
