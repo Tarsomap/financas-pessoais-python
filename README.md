@@ -33,32 +33,31 @@ O projeto foi desenvolvido para demonstrar na prática os principais conceitos e
 ---
 
 ## 🗂️ Estrutura do Projeto
+
+```text
 financas-pessoais-python/
-├── main.py # Ponto de entrada — carrega dados e inicia o menu
+├── main.py                  # Ponto de entrada — carrega dados e inicia o menu
 ├── README.md
 ├── dados/
-│ └── dados.txt # Arquivo de persistência (criado automaticamente)
+│   └── dados.txt            # Arquivo de persistencia (criado automaticamente)
 ├── models/
-│ ├── _init_.py
-│ ├── transacao.py # Classes Transacao, Receita e Despesa (herança)
-│ ├── categoria.py # Classe Categoria com validação de nome
-│ └── meta.py # Classe Meta com cálculo de progresso
+│   ├── __init__.py
+│   ├── transacao.py         # Classes Transacao, Receita e Despesa (heranca)
+│   ├── categoria.py         # Classe Categoria com validacao de nome
+│   └── meta.py              # Classe Meta com calculo de progresso
 ├── services/
-│ ├── _init_.py
-│ ├── gerenciador.py # Lógica central: adicionar, remover, calcular saldo
-│ ├── relatorio.py # Análises: totais por categoria, comparativo mensal
-│ └── persistencia.py # Salvar e carregar dados em arquivo .txt com split('|')
+│   ├── __init__.py
+│   ├── gerenciador.py       # Logica central: adicionar, remover, calcular saldo
+│   ├── relatorio.py         # Analises: totais por categoria, comparativo mensal
+│   └── persistencia.py      # Salvar e carregar dados em arquivo .txt
 ├── views/
-│ └── menu.py # Interface interativa no terminal (menus e submenus)
+│   └── menu.py              # Interface interativa no terminal (menus e submenus)
 └── tests/
-├── _init_.py
-├── test_transacao.py # Testa criação e validação de Receita e Despesa
-├── test_gerenciador.py # Testa saldo, adição e remoção de transações
-└── test_relatorio.py # Testa cálculo de totais e comparativo por categoria
-
-text
-
----
+    ├── __init__.py
+    ├── test_transacao.py    # Testa criacao e validacao de Receita e Despesa
+    ├── test_gerenciador.py  # Testa saldo, adicao e remocao de transacoes
+    └── test_relatorio.py    # Testa calculo de totais e comparativo por categoria
+```
 
 ## ⚙️ Funcionalidades
 
