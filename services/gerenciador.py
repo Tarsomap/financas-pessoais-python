@@ -1,154 +1,128 @@
-# =============================================================================
-# services/gerenciador.py
-# -----------------------------------------------------------------------------
-# Classe central de lógica de negócio da aplicação.
-# O Gerenciador é o único ponto de contato entre a interface gráfica
-# (views) e os dados (models). Nenhuma tela deve criar ou modificar
-# objetos Transacao ou Meta diretamente — tudo passa pelo Gerenciador.
-#
-# Responsabilidades:
-#   - Criar e armazenar Receitas e Despesas
-#   - Criar e armazenar Metas
-#   - Remover transações e metas
-#   - Filtrar transações por tipo, categoria, mês e ano
-#   - Calcular o saldo atual
-#
-# Conceitos demonstrados neste arquivo:
-#   - Encapsulamento: as listas _transacoes e _metas são privadas
-#   - List comprehension: usada nos métodos de filtro
-#   - Tratamento de exceções: IndexError ao remover índice inválido
-#
-# RESPONSÁVEL: Pessoa 3
-# =============================================================================
+from __future__ import annotations
 
-from datetime import date
-from models import Transacao, Receita, Despesa, Meta
+from typing import List, Optional
+from models.meta import Meta
 
 
 class Gerenciador:
-    """
-    Gerencia todas as transações e metas do sistema.
-    É a classe central de lógica de negócio.
-
-    Atributos:
-        _transacoes (list): Lista de todas as transações.
-        _metas (list): Lista de todas as metas.
-    """
 
     def __init__(self):
-        """Inicializa o gerenciador com listas vazias."""
-        self._transacoes = []
-        self._metas = []
+        self._transacoes: list = []
+        self._metas: List[Meta] = []
 
-    # ── Transações ──────────────────────────────────────────────────────────
 
-    def adicionar_receita(self, descricao: str, valor: float, categoria: str, data: date = None) -> Receita:
-        """
-        Cria e adiciona uma Receita à lista de transações.
+    # TRANSAÇÕES
 
-        Returns:
-            O objeto Receita criado.
-        """
-        # TODO: Implementar
-        # Dica: crie um objeto Receita e adicione em self._transacoes
-        pass
+    def adicionar_transacao(self, transacao) -> None:
+        if transacao is None:
+            raise TypeError("A transação não pode ser None.")
+        self._transacoes.append(transacao)
 
-    def adicionar_despesa(self, descricao: str, valor: float, categoria: str, data: date = None) -> Despesa:
-        """
-        Cria e adiciona uma Despesa à lista de transações.
+    def remover_transacao(self, transacao) -> bool:
+        try:
+            self._transacoes.remove(transacao)
+            return True
+        except ValueError:
+            return False
 
-        Returns:
-            O objeto Despesa criado.
-        """
-        # TODO: Implementar
-        pass
+    def listar_transacoes(self) -> list:
+        return list(self._transacoes)
 
-    def remover_transacao(self, indice: int) -> Transacao:
-        """
-        Remove uma transação pelo índice.
+    def filtrar_por_tipo(self, tipo: str) -> list:
+        tipo_lower = tipo.strip().lower()
+        return [
+            t for t in self._transacoes
+            if hasattr(t, "tipo") and t.tipo.lower() == tipo_lower
+        ]
 
-        Args:
-            indice: Posição na lista (começa em 0).
+    def filtrar_por_categoria(self, categoria) -> list:
+        if isinstance(categoria, str):
+            return [
+                t for t in self._transacoes
+                if hasattr(t, "categoria") and str(t.categoria).lower() == categoria.lower()
+            ]
+        return [
+            t for t in self._transacoes
+            if hasattr(t, "categoria") and t.categoria == categoria
+        ]
 
-        Returns:
-            A transação removida.
+    def filtrar_por_periodo(self, data_inicio: str, data_fim: str) -> list:
+        from datetime import datetime
 
-        Raises:
-            IndexError: Se o índice for inválido.
-        """
-        # TODO: Implementar
-        # Dica: valide o índice antes de remover para lançar IndexError claro
-        pass
+        fmt = "%d/%m/%Y"
+        try:
+            inicio = datetime.strptime(data_inicio, fmt)
+            fim = datetime.strptime(data_fim, fmt)
+        except ValueError as e:
+            raise ValueError(f"Formato de data inválido. Use DD/MM/AAAA. Detalhe: {e}")
 
-    def listar_transacoes(self, tipo: str = None, categoria: str = None, mes: int = None, ano: int = None) -> list:
-        """
-        Retorna transações filtradas pelos parâmetros fornecidos.
-        Parâmetros não informados (None) não aplicam filtro.
+        resultado = []
+        for t in self._transacoes:
+            if not hasattr(t, "data"):
+                continue
+            try:
+                data_t = datetime.strptime(t.data, fmt)
+                if inicio <= data_t <= fim:
+                    resultado.append(t)
+            except ValueError:
+                pass
 
-        Args:
-            tipo: 'receita' ou 'despesa'.
-            categoria: Nome da categoria.
-            mes: Número do mês (1-12).
-            ano: Ano com 4 dígitos.
+        return resultado
 
-        Returns:
-            Lista de transações que atendem a todos os filtros.
-        """
-        # TODO: Implementar usando list comprehension
-        # Dica: comece com resultado = self._transacoes e vá filtrando
-        pass
 
-    def saldo_atual(self) -> float:
-        """
-        Calcula o saldo atual (total receitas - total despesas).
+    # METAS
 
-        Returns:
-            Saldo como float.
-        """
-        # TODO: Implementar
-        # Dica: use sum() com list comprehension para receitas e despesas
-        pass
+    def adicionar_meta(self, meta: Meta) -> None:
+        if not isinstance(meta, Meta):
+            raise TypeError("Apenas instâncias de Meta são aceitas.")
 
-    # ── Metas ────────────────────────────────────────────────────────────────
+        nomes_existentes = [m.nome.lower() for m in self._metas]
+        if meta.nome.lower() in nomes_existentes:
+            raise ValueError(f"Já existe uma meta com o nome '{meta.nome}'.")
 
-    def adicionar_meta(self, descricao: str, valor_alvo: float, prazo: date) -> Meta:
-        """
-        Cria e adiciona uma Meta.
+        self._metas.append(meta)
 
-        Returns:
-            O objeto Meta criado.
-        """
-        # TODO: Implementar
-        pass
+    def remover_meta(self, nome: str) -> bool:
+        for i, meta in enumerate(self._metas):
+            if meta.nome.lower() == nome.strip().lower():
+                self._metas.pop(i)
+                return True
+        return False
 
-    def remover_meta(self, indice: int) -> Meta:
-        """
-        Remove uma meta pelo índice.
+    def buscar_meta(self, nome: str) -> Optional[Meta]:
+        for meta in self._metas:
+            if meta.nome.lower() == nome.strip().lower():
+                return meta
+        return None
 
-        Raises:
-            IndexError: Se o índice for inválido.
-        """
-        # TODO: Implementar
-        pass
+    def depositar_em_meta(self, nome: str, valor: float) -> None:
+        meta = self.buscar_meta(nome)
+        if meta is None:
+            raise ValueError(f"Meta '{nome}' não encontrada.")
+        meta.depositar(valor)
 
-    def listar_metas(self) -> list:
-        """Retorna cópia da lista de metas."""
-        return self._metas.copy()
+    def listar_metas(self) -> List[Meta]:
+        return list(self._metas)
 
-    # ── Dados brutos (usados pela Persistência) ──────────────────────────────
+    def metas_concluidas(self) -> List[Meta]:
+        return [m for m in self._metas if m.concluida()]
 
-    def get_transacoes(self) -> list:
-        """Retorna a lista interna de transações."""
-        return self._transacoes
+    def metas_pendentes(self) -> List[Meta]:
+        return [m for m in self._metas if not m.concluida()]
 
-    def get_metas(self) -> list:
-        """Retorna a lista interna de metas."""
-        return self._metas
 
-    def carregar_transacoes(self, transacoes: list) -> None:
-        """Substitui a lista de transações (usado ao carregar do arquivo)."""
-        self._transacoes = transacoes
+    # RESUMO E PERSISTÊNCIA
 
-    def carregar_metas(self, metas: list) -> None:
-        """Substitui a lista de metas (usado ao carregar do arquivo)."""
-        self._metas = metas
+    def resumo(self) -> dict:
+        return {
+            "total_transacoes": len(self._transacoes),
+            "total_metas": len(self._metas),
+            "metas_concluidas": len(self.metas_concluidas()),
+            "metas_pendentes": len(self.metas_pendentes()),
+        }
+
+    def metas_para_salvar(self) -> List[dict]:
+        return [m.to_dict() for m in self._metas]
+
+    def carregar_metas(self, lista_dicts: List[dict]) -> None:
+        self._metas = [Meta.from_dict(d) for d in lista_dicts]

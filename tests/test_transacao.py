@@ -4,22 +4,22 @@
 # Testes unitários para as classes Transacao, Receita e Despesa.
 #
 # O que são testes unitários?
-#   São funções que verificam automaticamente se uma unidade de código
-#   (uma função ou método) se comporta como esperado. O pytest executa
-#   todas as funções que começam com 'test_' e reporta quais passaram
-#   ou falharam.
+#   Funções que verificam automaticamente se um método se comporta
+#   como esperado. O pytest executa tudo que começa com 'test_'.
 #
 # Como rodar:
 #   pytest tests/test_transacao.py -v
 #
-# Estrutura de um teste:
-#   1. Arrange: preparar os dados necessários
-#   2. Act:     chamar o método sendo testado
-#   3. Assert:  verificar se o resultado é o esperado
+# Estrutura de cada teste (padrão AAA):
+#   1. Arrange: preparar os dados
+#   2. Act:     chamar o método
+#   3. Assert:  verificar o resultado
 #
-# pytest.raises(ExcecaoEsperada):
-#   Verifica que um bloco de código lança a exceção correta.
-#   Se a exceção não for lançada, o teste FALHA.
+# pytest.raises(Excecao):
+#   Verifica que o bloco lança a exceção esperada.
+#   Se a exceção NÃO for lançada, o teste FALHA.
+#
+# RESPONSÁVEL: Tarso (Coordenador)
 # =============================================================================
 
 import pytest

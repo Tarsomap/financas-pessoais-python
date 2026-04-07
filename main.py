@@ -7,7 +7,7 @@
 # que é o loop de eventos do tkinter — mantém a janela aberta esperando
 # interações do usuário até que ela seja fechada.
 #
-# RESPONSÁVEL: Pessoa 1 (Coordenador)
+# RESPONSÁVEL: Tarso (Coordenador)
 # =============================================================================
 
 from views.app import App

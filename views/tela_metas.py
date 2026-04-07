@@ -3,22 +3,22 @@
 # -----------------------------------------------------------------------------
 # Tela de gerenciamento de metas de economia.
 #
-# Responsabilidades:
-#   - Formulário para criar uma nova meta (descrição, valor alvo, prazo)
-#   - Exibir lista de metas com barra de progresso visual (ttk.Progressbar)
-#   - Mostrar status de cada meta: em andamento / concluída / atrasada
-#   - Botão para depositar valor em uma meta específica
-#   - Botão para remover uma meta
+# Exibe:
+#   - Formulário para criar nova meta
+#   - Cards de metas com barra de progresso (ttk.Progressbar)
+#   - Status colorido: em andamento / concluída / atrasada
+#   - Botão Depositar (abre janela popup tk.Toplevel)
+#   - Botão Remover
 #
-# Conceitos demonstrados neste arquivo:
-#   - ttk.Progressbar para barra de progresso
-#   - tk.Toplevel para abrir uma janela secundária (popup de depósito)
-#   - Criação dinâmica de widgets em loop (um card por meta)
-#   - lambda com argumento para passar o índice correto a cada botão:
+# Conceitos demonstrados:
+#   - ttk.Progressbar para visualizar progresso
+#   - tk.Toplevel para janela secundária (popup)
+#   - Criação dinâmica de widgets em loop
+#   - lambda com argumento fixo para evitar closure incorreta:
 #     command=lambda i=indice: self._depositar(i)
-#     (sem o i=indice, todos os botões usariam o último valor de 'indice')
+#     (sem o i=indice, todos os botões usariam o último valor do loop)
 #
-# RESPONSÁVEL: Pessoa 7
+# RESPONSÁVEL: Alice
 # =============================================================================
 
 import tkinter as tk
@@ -34,64 +34,46 @@ class TelaMetas(tk.Frame):
         super().__init__(parent, bg="#1e1e2e")
         self.pack(fill=tk.BOTH, expand=True)
         self.gerenciador = gerenciador
-
         self._construir_ui()
         self._atualizar_lista()
 
     def _construir_ui(self):
         """
-        TODO: Implementar com:
-        1. Frame formulário:
-           - Entry: descrição da meta
-           - Entry: valor alvo (R$)
-           - Entry: prazo (AAAA-MM-DD)
-           - Button: 'Criar Meta' → chama self._criar_meta()
-
-        2. Frame scrollável para a lista de metas:
-           - Para cada meta, criar um 'card' com:
-             * Label: descrição e prazo
-             * ttk.Progressbar: percentual concluído
-             * Label: 'R$ X,XX / R$ Y,YY'
-             * Label: status (colorido conforme o status)
-             * Button: 'Depositar' → self._depositar(indice)
-             * Button: 'Remover'   → self._remover_meta(indice)
+        TODO:
+        1. Frame formulário: Entry descrição, Entry valor alvo,
+           Entry prazo (AAAA-MM-DD), Button Criar Meta
+        2. Frame scrollável com cards de metas:
+           - Label descrição + prazo
+           - ttk.Progressbar com percentual_concluido()
+           - Label 'R$ atual / R$ alvo'
+           - Label status (colorido)
+           - Button Depositar, Button Remover
         """
         # TODO: Implementar
         pass
 
     def _criar_meta(self):
         """
-        Lê os campos e chama self.gerenciador.adicionar_meta().
-        TODO: Tratar ValueError com messagebox.showerror().
-        Converter a string de prazo com date.fromisoformat().
+        TODO: Ler campos, converter prazo com date.fromisoformat(),
+        chamar gerenciador.adicionar_meta(). Tratar ValueError.
         """
         # TODO: Implementar
         pass
 
     def _depositar(self, indice: int):
         """
-        Abre uma janela secundária (tk.Toplevel) para o usuário
-        informar o valor do depósito.
-        TODO: Ao confirmar, chamar meta.depositar(valor) e
-        self._atualizar_lista().
+        TODO: Abrir tk.Toplevel pedindo valor do depósito.
+        Chamar meta.depositar(valor) e _atualizar_lista().
         """
         # TODO: Implementar
         pass
 
     def _remover_meta(self, indice: int):
-        """
-        Remove a meta pelo índice.
-        TODO: Chamar self.gerenciador.remover_meta(indice)
-        e self._atualizar_lista().
-        """
+        """TODO: Chamar gerenciador.remover_meta(indice) e _atualizar_lista()."""
         # TODO: Implementar
         pass
 
     def _atualizar_lista(self):
-        """
-        Recria todos os cards de metas na tela.
-        TODO: Destruir os cards existentes e recriar a partir de
-        self.gerenciador.listar_metas().
-        """
+        """TODO: Destruir cards existentes e recriar a partir de listar_metas()."""
         # TODO: Implementar
         pass
