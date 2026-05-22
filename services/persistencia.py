@@ -9,13 +9,16 @@
 #   - helpers de conexão e execução de SQL
 #   - inicialização do banco a partir do schema
 #
-# Os métodos de negócio (salvar/carregar/remover) vêm nas próximas frentes.
+# Frente 0 concluída: esqueleto + métodos de usuário e transação.
 #
 # Responsável: Joao Guilherme
 # =============================================================================
 
 import os
 import sqlite3
+from datetime import date
+
+from models.transacao import Receita, Despesa, Transacao
 
 
 # Caminho absoluto e portátil para db/financas.db.
@@ -139,3 +142,185 @@ class Persistencia:
             conn.executescript(schema_sql)
         finally:
             conn.close()
+
+    # -------------------------------------------------------------------------
+    # Usuário  —  consumido pela frente de Autenticação
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def cadastrar_usuario(email: str, senha_hash: str, tipo_perfil: str) -> int:
+        """
+        Insere um novo usuário no banco e devolve o id gerado automaticamente.
+
+        Não usa _executar() porque precisamos de lastrowid — o id que o banco
+        atribuiu à linha recém-inserida. _executar() descarta o cursor, então
+        abrimos a conexão via _conectar() com try/finally, conforme o padrão.
+        """
+        sql = (
+            "INSERT INTO usuario (email, senha_hash, tipo_perfil) "
+            "VALUES (?, ?, ?)"
+        )
+        # Placeholders '?' separam o CÓDIGO SQL dos DADOS em duas etapas:
+        # 1. O banco compila o SQL sem nenhum valor ainda.
+        # 2. Os valores chegam depois, tratados como literais de dados — nunca
+        #    como SQL a ser interpretado. Assim, um email como
+        #    "x' OR '1'='1" vira um texto inofensivo, não um comando SQL.
+        conn = Persistencia._conectar()
+        try:
+            with conn:
+                cursor = conn.execute(sql, (email, senha_hash, tipo_perfil))
+                # lastrowid lido DENTRO do with, antes do commit implícito,
+                # porque após conn.close() o cursor não é mais confiável.
+                return cursor.lastrowid
+        finally:
+            conn.close()
+
+    @staticmethod
+    def buscar_usuario_por_email(email: str) -> Usuario | None:
+        """
+        Devolve o objeto Usuario com aquele email, ou None se não existir.
+
+        Usa _consultar() porque é leitura pura — sem necessidade de commit.
+        """
+        from models.usuario import Usuario  # Importação local para evitar dependência circular entre módulos
+        sql = (
+            "SELECT id, email, senha_hash, tipo_perfil "
+            "FROM usuario WHERE email = ?"
+        )
+        linhas = Persistencia._consultar(sql, (email,))
+
+        # Lista vazia = email não cadastrado; None é o contrato de "não achei".
+        if not linhas:
+            return None
+
+        # Email tem restrição UNIQUE no schema, então há no máximo uma linha.
+        linha = linhas[0]
+        # Reconstrói o objeto mapeando cada coluna do SELECT para o parâmetro
+        # correspondente — a ordem do SELECT deve coincidir com os índices aqui.
+        return Usuario(
+            id=linha[0],
+            email=linha[1],
+            senha_hash=linha[2],
+            tipo_perfil=linha[3],
+        )
+
+    @staticmethod
+    def buscar_usuario_por_id(usuario_id: int) -> Usuario | None:
+        """
+        Devolve o objeto Usuario com aquele id, ou None se não existir.
+
+        Separado de buscar_por_email para que o chamador escolha a chave
+        de busca sem precisar converter tipos externamente.
+        """
+        from models.usuario import Usuario  # Importação local para evitar dependência circular entre módulos
+        sql = (
+            "SELECT id, email, senha_hash, tipo_perfil "
+            "FROM usuario WHERE id = ?"
+        )
+        linhas = Persistencia._consultar(sql, (usuario_id,))
+
+        if not linhas:
+            return None
+
+        linha = linhas[0]
+        return Usuario(
+            id=linha[0],
+            email=linha[1],
+            senha_hash=linha[2],
+            tipo_perfil=linha[3],
+        )
+
+    # -------------------------------------------------------------------------
+    # Transação  —  consumido pelo Gerenciador
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def salvar_transacao(transacao: Transacao, usuario_id: int) -> int:
+        """
+        Insere uma transação vinculada ao usuário e devolve o id gerado.
+
+        Acessa o objeto apenas via interface pública (tipo(), .descricao etc.)
+        para respeitar o encapsulamento — nunca acessa _atributos privados.
+        """
+        # Compatibilidade: categoria pode ser string ou objeto com .nome,
+        # exatamente como o .txt antigo tratava — comportamento preservado.
+        categoria = (
+            transacao.categoria.nome
+            if hasattr(transacao.categoria, "nome")
+            else str(transacao.categoria)
+        )
+
+        sql = (
+            "INSERT INTO transacao "
+            "(tipo, descricao, valor, categoria, data, usuario_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        params = (
+            transacao.tipo(),            # polimorfismo: "receita" ou "despesa"
+            transacao.descricao,
+            transacao.valor,
+            categoria,
+            transacao.data.isoformat(),  # persiste como texto "AAAA-MM-DD"
+            usuario_id,
+        )
+
+        conn = Persistencia._conectar()
+        try:
+            with conn:
+                cursor = conn.execute(sql, params)
+                return cursor.lastrowid
+        finally:
+            conn.close()
+
+    @staticmethod
+    def carregar_transacoes(usuario_id: int) -> list:
+        """
+        Carrega todas as transações do usuário como objetos Receita ou Despesa.
+
+        Usa um mini-factory (dict tipo→classe) para decidir qual subclasse
+        instanciar sem if/elif encadeados — mais fácil de extender no futuro.
+        """
+        sql = (
+            "SELECT id, tipo, descricao, valor, categoria, data "
+            "FROM transacao WHERE usuario_id = ?"
+        )
+        linhas = Persistencia._consultar(sql, (usuario_id,))
+
+        # Factory: string do banco → classe Python. Centraliza o mapeamento.
+        _factory = {"receita": Receita, "despesa": Despesa}
+
+        resultado = []
+        for linha in linhas:
+            id_bd, tipo, descricao, valor, categoria, data_str = linha
+
+            classe = _factory.get(tipo)
+            # Tipo desconhecido: ignora silenciosamente, como o .txt antigo fazia,
+            # evitando que um registro corrompido derrube toda a carga.
+            if classe is None:
+                continue
+
+            # Reconstrói o objeto via construtor da subclasse.
+            # date.fromisoformat() converte "2026-04-01" → date(2026, 4, 1).
+            obj = classe(descricao, valor, categoria, date.fromisoformat(data_str))
+
+            # O modelo Transacao não tem atributo 'id' (é responsabilidade do banco).
+            # Atribuímos dinamicamente para que remover_transacao() possa usá-lo.
+            # Python permite isso; numa versão mais madura, 'id' entraria no modelo.
+            obj.id = id_bd
+
+            resultado.append(obj)
+
+        return resultado
+
+    @staticmethod
+    def remover_transacao(transacao_id: int, usuario_id: int) -> None:
+        """
+        Deleta uma transação, mas SOMENTE se ela pertencer ao usuário informado.
+
+        O segundo filtro AND usuario_id = ? é defesa em profundidade: mesmo que
+        a camada acima envie um transacao_id errado por bug ou tentativa maliciosa,
+        o DELETE não afeta registros de outros usuários.
+        """
+        sql = "DELETE FROM transacao WHERE id = ? AND usuario_id = ?"
+        # _executar() é suficiente: não precisamos de lastrowid num DELETE.
+        Persistencia._executar(sql, (transacao_id, usuario_id))
