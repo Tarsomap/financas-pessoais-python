@@ -1,151 +1,141 @@
 # =============================================================================
-# services/persistencia.py
+# services/persistencia.py  —  Frente 0: fundação SQLite
 # -----------------------------------------------------------------------------
-# Responsável por salvar e carregar os dados da aplicação em um arquivo .txt.
+# Migra o armazenamento de dados/dados.txt (separador '|') para SQLite,
+# usando exclusivamente a biblioteca padrão sqlite3 (sem ORM, sem deps extras).
 #
-# Por que .txt e não JSON ou CSV?
-# O formato .txt com separador '|' é uma introdução à leitura/escrita de
-# arquivos em Python sem depender de bibliotecas externas. É suficiente
-# para demonstrar os conceitos de open(), read(), write() e split().
+# Esta versão contém APENAS o esqueleto de infraestrutura:
+#   - constante de caminho portátil
+#   - helpers de conexão e execução de SQL
+#   - inicialização do banco a partir do schema
 #
-# Formato do arquivo dados.txt:
-#   Cada linha = um registro. Campos separados por '|'.
+# Os métodos de negócio (salvar/carregar/remover) vêm nas próximas frentes.
 #
-#   Transação: TIPO|DESCRICAO|VALOR|CATEGORIA|DATA
-#   Meta:      META|NOME|VALOR_ALVO|VALOR_ATUAL|PRAZO
-#
-# Exemplo:
-#   receita|Salário|3000.0|Salário|2026-04-01
-#   despesa|Mercado|250.5|Alimentação|2026-04-02
-#   META|Viagem|2000.0|500.0|2026-12-31
-#
-# Conceitos demonstrados:
-#   - open() com modos 'r' e 'w', encoding='utf-8'
-#   - split('|') para separar campos
-#   - strip() para remover espaços e quebras de linha residuais
-#   - date.fromisoformat() para converter string em date
-#   - os.path para caminhos portáteis entre sistemas operacionais
-#   - os.makedirs() para criar a pasta 'dados/' se ainda não existir
-#
-# RESPONSÁVEL: Joao Guilherme
+# Responsável: Joao Guilherme
 # =============================================================================
 
 import os
-from datetime import date
-
-from models.transacao import Receita, Despesa
-from models.meta import Meta
+import sqlite3
 
 
-# Caminho absoluto e portátil para dados/dados.txt, independente de onde
-# o script é executado. __file__ aponta para este próprio arquivo .py.
-CAMINHO_ARQUIVO = os.path.join(os.path.dirname(__file__), "..", "dados", "dados.txt")
+# Caminho absoluto e portátil para db/financas.db.
+# os.path.dirname(__file__) resolve para o diretório deste arquivo (services/).
+# ".." sobe um nível para a raiz do projeto, depois desce em db/.
+# Isso funciona independente de onde o usuário executa o script.
+CAMINHO_BANCO: str = os.path.join(
+    os.path.dirname(__file__), "..", "db", "financas.db"
+)
+
+# Caminho para o arquivo SQL que define as tabelas.
+# Mantido como constante separada para que inicializar_banco() seja legível.
+CAMINHO_SCHEMA: str = os.path.join(
+    os.path.dirname(__file__), "..", "db", "schema.sql"
+)
 
 
 class Persistencia:
-    """Salva e carrega dados da aplicação em arquivo de texto simples."""
+    """Camada de acesso a dados: lê e grava no banco SQLite db/financas.db."""
+
+    # -------------------------------------------------------------------------
+    # Helpers privados de infraestrutura  (convenção: prefixo _)
+    # -------------------------------------------------------------------------
 
     @staticmethod
-    def salvar(transacoes: list, metas: list) -> None:
+    def _conectar() -> sqlite3.Connection:
         """
-        Persiste todas as transações e metas no arquivo dados.txt.
+        Abre e devolve uma conexão pronta com o banco SQLite.
 
-        Cada objeto é serializado em uma linha com campos separados por '|'.
-        Cria a pasta 'dados/' automaticamente se ela ainda não existir.
-
-        Formato por linha:
-          - Transação: tipo|descricao|valor|categoria|data
-          - Meta:      META|nome|valor_alvo|valor_atual|prazo
-
-        Parâmetros:
-            transacoes (list): lista de objetos Receita ou Despesa
-            metas      (list): lista de objetos Meta
+        Habilita PRAGMA foreign_keys porque o SQLite desativa a integridade
+        referencial por padrão — uma decisão histórica de retrocompatibilidade
+        que remonta à época em que FOREIGN KEY ainda não existia no padrão.
         """
-        # os.makedirs com exist_ok=True cria a pasta sem lançar erro se já existir
-        os.makedirs(os.path.dirname(CAMINHO_ARQUIVO), exist_ok=True)
+        # Cria db/financas.db se ainda não existir (mas NÃO cria a pasta db/,
+        # por isso inicializar_banco() precisa garantir a pasta antes).
+        conn = sqlite3.connect(CAMINHO_BANCO)
 
-        # Abre o arquivo em modo escrita ('w'): cria se não existir, sobrescreve se existir
-        with open(CAMINHO_ARQUIVO, "w", encoding="utf-8") as arquivo:
+        # PRAGMA foreign_keys é uma configuração POR CONEXÃO, não persistida
+        # no arquivo do banco. Toda nova conexão começa com foreign_keys = OFF,
+        # então precisamos ativar aqui, antes de qualquer outra operação.
+        # Sem isso, inserir transacao com usuario_id inexistente não geraria
+        # erro nenhum — um bug silencioso muito difícil de rastrear depois.
+        conn.execute("PRAGMA foreign_keys = ON")
 
-            # Serializa cada transação em uma linha
-            for t in transacoes:
-                # hasattr garante compatibilidade se categoria for string ou objeto
-                categoria = t.categoria.nome if hasattr(t.categoria, "nome") else str(t.categoria)
-                linha = f"{t.tipo()}|{t.descricao}|{t.valor}|{categoria}|{t.data.isoformat()}\n"
-                arquivo.write(linha)
-
-            # Serializa cada meta em uma linha com prefixo META
-            for m in metas:
-                linha = f"META|{m.nome}|{m.valor_alvo}|{m.valor_atual}|{m.prazo.isoformat()}\n"
-                arquivo.write(linha)
+        return conn
 
     @staticmethod
-    def carregar() -> tuple:
+    def _executar(sql: str, params: tuple = ()) -> None:
         """
-        Lê o arquivo dados.txt e reconstrói os objetos do sistema.
+        Executa um comando de escrita: INSERT, UPDATE ou DELETE.
 
-        Se o arquivo não existir (primeira execução), retorna listas vazias
-        sem lançar exceção — comportamento esperado na inicialização do app.
-
-        Retorna:
-            tuple: (lista_transacoes, lista_metas)
-                   Cada elemento é uma lista; ambas são vazias se o arquivo
-                   não existir ou se não houver registros daquele tipo.
-
-        Lança:
-            ValueError se uma linha tiver formato inválido (campos a menos).
+        O 'with conn' garante commit em sucesso e rollback em exceção.
+        O 'finally' garante o fechamento da conexão — porque o context manager
+        sqlite3.Connection NÃO fecha a conexão, apenas faz commit/rollback.
         """
-        transacoes = []
-        metas = []
+        conn = Persistencia._conectar()
+        try:
+            # 'with conn' ativa o context manager da conexão sqlite3.
+            # Em sucesso: chama conn.commit() automaticamente ao sair do bloco.
+            # Em exceção: chama conn.rollback() e re-lança a exceção.
+            # PEGADINHA: ao contrário de 'with open(arquivo)', este 'with'
+            # NÃO fecha a conexão — a conexão continua viva após o bloco.
+            with conn:
+                conn.execute(sql, params)
+        finally:
+            # finally garante o fechamento mesmo que 'with conn' tenha
+            # re-lançado uma exceção após o rollback. Sem isso a conexão
+            # ficaria aberta em memória até o garbage collector agir.
+            conn.close()
 
-        # Se o arquivo não existir, retorna tupla vazia — não é um erro
-        if not os.path.exists(CAMINHO_ARQUIVO):
-            return transacoes, metas
+    @staticmethod
+    def _consultar(sql: str, params: tuple = ()) -> list:
+        """
+        Executa uma consulta SELECT e devolve todas as linhas encontradas.
 
-        with open(CAMINHO_ARQUIVO, "r", encoding="utf-8") as arquivo:
-            for numero, linha in enumerate(arquivo, start=1):
-                # strip() remove '\n' e espaços em branco no início/fim
-                linha = linha.strip()
+        SELECT não modifica dados, portanto não precisa de commit.
+        A conexão ainda deve ser fechada explicitamente — mesmo padrão
+        com try/finally para garantir isso em qualquer caminho de execução.
+        """
+        conn = Persistencia._conectar()
+        try:
+            # conn.execute() cria um cursor internamente e o devolve.
+            # O cursor é o "ponteiro" que navega linha a linha no resultado.
+            cursor = conn.execute(sql, params)
 
-                # Ignora linhas vazias (ex.: linha em branco no final do arquivo)
-                if not linha:
-                    continue
+            # fetchall() traz todas as linhas para a memória de uma vez.
+            # É simples e suficiente para este projeto; em tabelas muito
+            # grandes, fetchmany(n) ou iteração via cursor seriam preferíveis.
+            return cursor.fetchall()
+        finally:
+            conn.close()
 
-                # split('|') divide a linha em campos pelo separador
-                campos = linha.split("|")
+    # -------------------------------------------------------------------------
+    # Inicialização
+    # -------------------------------------------------------------------------
 
-                if campos[0].upper() == "META":
-                    # Linha de meta: META|nome|valor_alvo|valor_atual|prazo
-                    if len(campos) < 5:
-                        raise ValueError(f"Linha {numero} inválida (meta): '{linha}'")
+    @staticmethod
+    def inicializar_banco() -> None:
+        """
+        Lê db/schema.sql e cria as tabelas no banco (idempotente).
 
-                    nome       = campos[1]
-                    valor_alvo = float(campos[2])
-                    valor_atual = float(campos[3])
-                    prazo      = date.fromisoformat(campos[4])
+        Deve ser chamado uma única vez no início de main.py.
+        CREATE TABLE IF NOT EXISTS no schema garante que chamar novamente
+        não apaga dados já existentes.
+        """
+        # Garante que a pasta db/ existe antes de sqlite3.connect() tentar
+        # criar o arquivo — connect() não cria subdiretórios, só o arquivo.
+        os.makedirs(os.path.dirname(CAMINHO_BANCO), exist_ok=True)
 
-                    meta = Meta(nome, valor_alvo, prazo)
-                    # Restaura o valor já depositado usando depositar(), se houver
-                    if valor_atual > 0:
-                        meta.depositar(valor_atual)
-                    metas.append(meta)
+        # Lê o schema completo como string — executescript() espera texto puro.
+        with open(CAMINHO_SCHEMA, "r", encoding="utf-8") as arquivo_schema:
+            schema_sql = arquivo_schema.read()
 
-                else:
-                    # Linha de transação: tipo|descricao|valor|categoria|data
-                    if len(campos) < 5:
-                        raise ValueError(f"Linha {numero} inválida (transação): '{linha}'")
-
-                    tipo      = campos[0].lower()
-                    descricao = campos[1]
-                    valor     = float(campos[2])
-                    categoria = campos[3]
-                    data      = date.fromisoformat(campos[4])
-
-                    # Instancia o objeto correto conforme o tipo lido do arquivo
-                    if tipo == "receita":
-                        transacoes.append(Receita(descricao, valor, categoria, data))
-                    elif tipo == "despesa":
-                        transacoes.append(Despesa(descricao, valor, categoria, data))
-                    # Linhas com tipo desconhecido são silenciosamente ignoradas
-
-        return transacoes, metas
+        conn = Persistencia._conectar()
+        try:
+            # executescript() aceita múltiplos comandos separados por ';'.
+            # execute() só aceita um comando por vez, portanto não serviria aqui.
+            # executescript() faz um commit implícito antes de rodar o script,
+            # encerrando qualquer transação pendente — o commit do 'with conn'
+            # seria redundante, então usamos o padrão simples try/finally.
+            conn.executescript(schema_sql)
+        finally:
+            conn.close()
