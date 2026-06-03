@@ -14,5 +14,6 @@
 from .transacao import Transacao, Receita, Despesa
 from .categoria import Categoria
 from .meta import Meta
+from .usuario import Usuario
 
-__all__ = ["Transacao", "Receita", "Despesa", "Categoria", "Meta"]
+__all__ = ["Transacao", "Receita", "Despesa", "Categoria", "Meta", "Usuario"]

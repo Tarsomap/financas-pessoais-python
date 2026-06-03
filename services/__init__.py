@@ -15,5 +15,6 @@
 from .gerenciador import Gerenciador
 from .relatorio import Relatorio
 from .persistencia import Persistencia
+from .autenticacao import Autenticacao
 
-__all__ = ["Gerenciador", "Relatorio", "Persistencia"]
+__all__ = ["Gerenciador", "Relatorio", "Persistencia", "Autenticacao"]

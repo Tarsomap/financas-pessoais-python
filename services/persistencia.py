@@ -158,6 +158,9 @@ class Persistencia:
         atribuiu à linha recém-inserida. _executar() descarta o cursor, então
         abrimos a conexão via _conectar() com try/finally, conforme o padrão.
         """
+        email = email.strip().lower()
+        tipo_perfil = tipo_perfil.strip().lower()
+
         sql = (
             "INSERT INTO usuario (email, senha_hash, tipo_perfil) "
             "VALUES (?, ?, ?)"
@@ -185,6 +188,7 @@ class Persistencia:
         Usa _consultar() porque é leitura pura — sem necessidade de commit.
         """
         from models.usuario import Usuario  # Importação local para evitar dependência circular entre módulos
+        email = email.strip().lower()
         sql = (
             "SELECT id, email, senha_hash, tipo_perfil "
             "FROM usuario WHERE email = ?"
