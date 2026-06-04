@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Metas - Finanças Pessoais{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>🎯 Metas Financeiras</h1>
+    
+    <!-- Formulário para adicionar nova meta -->
+    <div class="card">
+        <h2>➕ Nova Meta</h2>
+        <form method="POST" action="{{ url_for('metas.adicionar') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nome da Meta:</label>
+                    <input type="text" name="nome" placeholder="Ex: Viagem, PS5, Apartamento..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Valor Alvo (R$):</label>
+                    <input type="number" step="0.01" name="valor_alvo" placeholder="0,00" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Prazo (opcional):</label>
+                    <input type="date" name="prazo">
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-primary">🎯 Criar Meta</button>
+        </form>
+    </div>
+    
+    <!-- Lista de metas -->
+    <div class="card">
+        <h2>📋 Suas Metas</h2>
+        
+        {% if metas %}
+            {% for m in metas %}
+            <div class="meta-card">
+                <div class="meta-header">
+                    <h3>{{ m.nome }}</h3>
+                    {% if m.prazo %}
+                    <span class="prazo">📅 Prazo: {{ m.prazo }}</span>
+                    {% else %}
+                    <span class="prazo">📅 Sem prazo definido</span>
+                    {% endif %}
+                </div>
+                
+                <div class="meta-valores">
+                    <span>🎯 Alvo: <strong>R$ {{ "%.2f"|format(m.valor_alvo) }}</strong></span>
+                    <span>💰 Acumulado: <strong>R$ {{ "%.2f"|format(m.valor_atual) }}</strong></span>
+                    <span>⚡ Falta: <strong>R$ {{ "%.2f"|format(m.valor_alvo - m.valor_atual) }}</strong></span>
+                </div>
+                
+                <!-- Barra de progresso -->
+                <div class="progress-container">
+                    {% set percentual = (m.valor_atual / m.valor_alvo * 100)|round %}
+                    <div class="progress-bar" style="width: {{ percentual }}%;">
+                        {{ percentual }}%
+                    </div>
+                </div>
+                
+                <!-- Ações da meta -->
+                <div class="meta-actions">
+                    <form method="POST" action="{{ url_for('metas.depositar', id=m.id) }}" class="form-inline">
+                        <input type="number" step="0.01" name="valor" placeholder="Valor para depositar" required>
+                        <button type="submit" class="btn-success">💰 Depositar</button>
+                    </form>
+                    
+                    <form method="POST" action="{{ url_for('metas.remover', id=m.id) }}" class="form-inline">
+                        <button type="submit" class="btn-danger" onclick="return confirm('Tem certeza que deseja remover esta meta?')">
+                            🗑️ Remover Meta
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Resumo das metas (calculado com loop simples) -->
+            <div class="resumo-metas">
+                <h3>📊 Resumo</h3>
+                
+                {% set total_alvo = 0 %}
+                {% set total_atual = 0 %}
+                {% set concluidas = 0 %}
+                
+                {% for m in metas %}
+                    {% set total_alvo = total_alvo + m.valor_alvo %}
+                    {% set total_atual = total_atual + m.valor_atual %}
+                    {% if m.valor_atual >= m.valor_alvo %}
+                        {% set concluidas = concluidas + 1 %}
+                    {% endif %}
+                {% endfor %}
+                
+                <p>Total das metas: <strong>R$ {{ "%.2f"|format(total_alvo) }}</strong></p>
+                <p>Total economizado: <strong>R$ {{ "%.2f"|format(total_atual) }}</strong></p>
+                {% if total_alvo > 0 %}
+                    <p>Progresso geral: <strong>{{ (total_atual / total_alvo * 100)|round }}%</strong></p>
+                {% endif %}
+                
+                {% if concluidas > 0 %}
+                <div class="conquistas">
+                    <p>🏆 Metas concluídas: <strong>{{ concluidas }}</strong></p>
+                </div>
+                {% endif %}
+            </div>
+        {% else %}
+        <p class="empty-message">📭 Nenhuma meta cadastrada ainda. Crie sua primeira meta acima!</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
