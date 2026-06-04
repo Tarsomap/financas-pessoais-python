@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Finanças Pessoais{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>📊 Dashboard Financeiro</h1>
+    
+    <!-- CARD DO SALDO PRINCIPAL -->
+    <div class="saldo-card">
+        <h2>💰 Seu Saldo Atual</h2>
+        <div class="saldo-valor {% if saldo >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+            R$ {{ "%.2f"|format(saldo) }}
+        </div>
+        <p>Atualizado em tempo real</p>
+    </div>
+
+    <!-- GRID DE RESUMO RÁPIDO -->
+    <div class="resumo-grid">
+        <div class="resumo-card">
+            <h3>📈 Total de Receitas (mês)</h3>
+            <div class="valor receita">
+                <!-- TODO: substituir por valor real quando o Gerenciador estiver pronto -->
+                R$ 6.200,00
+            </div>
+        </div>
+        <div class="resumo-card">
+            <h3>📉 Total de Despesas (mês)</h3>
+            <div class="valor despesa">
+                R$ {{ "%.2f"|format(total_despesas_mes) }}
+            </div>
+        </div>
+        <div class="resumo-card">
+            <h3>🎯 Metas Ativas</h3>
+            <div class="valor">
+                <!-- TODO: pegar do Gerenciador quando estiver pronto -->
+                3
+            </div>
+        </div>
+        <div class="resumo-card">
+            <h3>📅 Transações (mês)</h3>
+            <div class="valor">
+                <!-- TODO: contar do Gerenciador -->
+                {{ ultimas_transacoes|length }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ÚLTIMAS TRANSAÇÕES -->
+    <div class="ultimas-transacoes">
+        <h2>📋 Últimas Transações</h2>
+        
+        {% if ultimas_transacoes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in ultimas_transacoes %}
+                <tr>
+                    <td>{{ t.data }}</td>
+                    <td>{{ t.descricao }}</td>
+                    <td>{{ t.categoria if t.categoria else '-' }}</td>
+                    <td class="{% if t.tipo == 'receita' %}receita{% else %}despesa{% endif %}">
+                        {% if t.tipo == 'receita' %}+{% else %}-{% endif %} 
+                        R$ {{ "%.2f"|format(t.valor) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-center" style="color: var(--text-light); padding: 2rem;">
+            Nenhuma transação registrada ainda.<br>
+            <a href="{{ url_for('transacoes.listar') }}">Clique aqui</a> para adicionar sua primeira transação!
+        </p>
+        {% endif %}
+        
+        <!-- BOTÃO PARA VER TODAS AS TRANSAÇÕES -->
+        <div class="text-center mt-2">
+            <a href="{{ url_for('transacoes.listar') }}" class="btn">🔍 Ver todas as transações</a>
+        </div>
+    </div>
+
+    <!-- DICA RÁPIDA -->
+    <div class="alert alert-info mt-2">
+        <strong>💡 Dica:</strong> Que tal criar uma meta de economia? Acesse a aba <strong>Metas</strong> e defina seus objetivos financeiros!
+    </div>
+</div>
+{% endblock %}
