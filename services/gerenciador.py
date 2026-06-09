@@ -1,282 +1,290 @@
-# =============================================================================
-# services/gerenciador.py
-# -----------------------------------------------------------------------------
-# Camada de serviço central do sistema de finanças pessoais.
-# O Gerenciador coordena todas as operações de negócio: cria e remove
-# transações (receitas e despesas), calcula saldo e gerencia metas.
-#
-# CONCEITOS APLICADOS:
-#   - Encapsulamento: atributos _transacoes e _metas são privados
-#   - Composição: Gerenciador usa objetos Receita, Despesa e Meta
-#   - List comprehensions: usadas nos filtros e no cálculo de saldo
-#   - Tratamento de exceções: IndexError e ValueError com mensagens claras
-#   - Separação de responsabilidades: lógica de negócio isolada da view
-#   - Polimorfismo: adicionar_receita/despesa aceitam objeto ou parâmetros
-#
-# RESPONSÁVEL: Pessoa 3 (Vinicius Prado Sobral)
-# =============================================================================
+"""
+services/gerenciador.py
+-----------------------
+API que as views (rotas Flask) chamam para operar sobre os dados de UM usuário.
 
-from __future__ import annotations
+Por que usuario_id no construtor?
+    Um servidor web é stateless: cada requisição é isolada e vários usuários
+    o acessam ao mesmo tempo. Não dá para manter "uma lista na memória".
+    O Gerenciador nasce amarrado a um usuario_id e todas as operações ficam
+    escopadas a ele — a view nunca precisa saber qual usuário está logado,
+    só passa o id para cá e esquece.
+
+Por que delegar para Persistencia?
+    Separação de responsabilidades: o Gerenciador sabe O QUE fazer (regra
+    de negócio); a Persistencia sabe COMO guardar (SQL). Trocar de banco
+    um dia não muda uma linha aqui.
+
+Remoção por id (não por posição):
+    Com banco, cada linha tem um id permanente (PRIMARY KEY). Remover por
+    posição quebraria com filtros, ordenação e paginação.
+"""
 
 from datetime import date
-from typing import List, Optional
-
-from models.transacao import Receita, Despesa
-from models.meta import Meta
+from services.persistencia import Persistencia
 
 
 class Gerenciador:
     """
-    Serviço central que gerencia transações financeiras e metas de economia.
-    Mantém listas internas e expõe métodos de negócio para a camada de views.
+    Fachada de operações financeiras de um único usuário.
+
+    Uso típico dentro de uma rota Flask:
+        g = Gerenciador(session['usuario_id'])
+        g.adicionar_receita('Salário', 3000.0, 'Salário')
+        saldo = g.saldo_atual()
     """
 
-    def __init__(self):
-        self._transacoes: list = []
-        self._metas: List[Meta] = []
+    def __init__(self, usuario_id: int):
+        # Grava o dono de todas as operações deste objeto.
+        # Nenhum método expõe esse id para a camada de views.
+        self._usuario_id = usuario_id
 
-    # -------------------------------------------------------------------------
-    # TRANSAÇÕES
-    # -------------------------------------------------------------------------
+    # ------------------------------------------------------------------ #
+    #  TRANSAÇÕES                                                          #
+    # ------------------------------------------------------------------ #
 
-    def adicionar_receita(self, descricao_ou_objeto, valor=None, categoria=None, data=None) -> Receita:
+    def adicionar_receita(
+        self,
+        descricao: str,
+        valor: float,
+        categoria: str,
+        data: str | None = None,
+    ) -> int:
         """
-        Cria uma Receita e a registra na lista de transações.
+        Cria e persiste uma receita para o usuário deste Gerenciador.
 
-        Aceita dois modos de chamada:
-          Modo 1 — separado (usado nos testes):
-            adicionar_receita("Salário", 3000.0, "Salário", date(2026, 4, 1))
-          Modo 2 — objeto pronto (usado pelas views):
-            adicionar_receita(objeto_Receita)
+        Args:
+            descricao : Texto livre. Ex.: 'Salário março'
+            valor     : Valor positivo em reais. Ex.: 3000.0
+            categoria : String de categoria. Ex.: 'Salário'
+            data      : ISO 'AAAA-MM-DD'. Padrão: hoje.
 
-        Parâmetros:
-            descricao_ou_objeto : str com a descrição OU objeto Receita já criado
-            valor     (float)   : valor positivo em reais (Modo 1)
-            categoria (str)     : categoria da receita (Modo 1)
-            data      (date)    : data da transação, padrão date.today() (Modo 1)
+        Returns:
+            id gerado no banco para a transação criada.
 
-        Retorna:
-            Objeto Receita registrado.
-
-        Lança:
-            ValueError se descrição vazia ou valor <= 0 (vem do model Transacao).
+        Raises:
+            ValueError: se valor <= 0 ou descricao vazio.
         """
-        if isinstance(descricao_ou_objeto, Receita):
-            # Modo 2: view já construiu o objeto, só registra
-            self._transacoes.append(descricao_ou_objeto)
-            return descricao_ou_objeto
-        # Modo 1: constrói o objeto com os parâmetros separados
-        receita = Receita(descricao_ou_objeto, valor, categoria, data)
-        self._transacoes.append(receita)
-        return receita
+        self._validar_transacao(descricao, valor)
+        data = data or date.today().isoformat()
 
-    def adicionar_despesa(self, descricao_ou_objeto, valor=None, categoria=None, data=None) -> Despesa:
+        # Importação local evita importar Receita em todo lugar;
+        # a Persistencia devolve objetos tipados — só precisamos do modelo
+        # para montar o dict que ela espera.
+        from models.transacao import Receita
+
+        transacao = Receita(descricao, valor, categoria, data)
+        return Persistencia.salvar_transacao(transacao, self._usuario_id)
+
+    def adicionar_despesa(
+        self,
+        descricao: str,
+        valor: float,
+        categoria: str,
+        data: str | None = None,
+    ) -> int:
         """
-        Cria uma Despesa e a registra na lista de transações.
+        Cria e persiste uma despesa para o usuário deste Gerenciador.
 
-        Aceita dois modos de chamada (mesma lógica de adicionar_receita):
-          Modo 1 — separado (usado nos testes):
-            adicionar_despesa("Mercado", 200.0, "Alimentação", date(2026, 4, 1))
-          Modo 2 — objeto pronto (usado pelas views):
-            adicionar_despesa(objeto_Despesa)
-
-        Retorna:
-            Objeto Despesa registrado.
-
-        Lança:
-            ValueError se descrição vazia ou valor <= 0 (vem do model Transacao).
+        Mesmos parâmetros de adicionar_receita; tipo fica como 'despesa'.
         """
-        if isinstance(descricao_ou_objeto, Despesa):
-            # Modo 2: view já construiu o objeto, só registra
-            self._transacoes.append(descricao_ou_objeto)
-            return descricao_ou_objeto
-        # Modo 1: constrói o objeto com os parâmetros separados
-        despesa = Despesa(descricao_ou_objeto, valor, categoria, data)
-        self._transacoes.append(despesa)
-        return despesa
+        self._validar_transacao(descricao, valor)
+        data = data or date.today().isoformat()
 
-    def remover_transacao(self, indice: int) -> bool:
+        from models.transacao import Despesa
+
+        transacao = Despesa(descricao, valor, categoria, data)
+        return Persistencia.salvar_transacao(transacao, self._usuario_id)
+
+    def remover_transacao(self, transacao_id: int) -> None:
         """
-        Remove a transação na posição `indice` da lista (0-based).
+        Remove uma transação pelo seu id no banco.
 
-        A Treeview exibe as transações com um índice sequencial (0, 1, 2...)
-        que corresponde diretamente à posição na lista interna. Ao selecionar
-        e remover, a view passa esse índice aqui.
-
-        Parâmetros:
-            indice (int): posição da transação a remover
-
-        Retorna:
-            True se removida com sucesso.
-
-        Lança:
-            IndexError se o índice estiver fora do intervalo da lista.
+        Por que passar usuario_id aqui também?
+            Defesa em profundidade: o WHERE id = ? AND usuario_id = ?
+            garante que ninguém apague o dado de outro usuário mesmo
+            conhecendo o id da transação.
         """
-        if not isinstance(indice, int) or indice < 0 or indice >= len(self._transacoes):
-            raise IndexError(f"Índice {indice} fora do intervalo.")
-        del self._transacoes[indice]
-        return True
+        Persistencia.remover_transacao(transacao_id, self._usuario_id)
 
-    def listar_transacoes(self, tipo: str = None, categoria: str = None) -> list:
+    def listar_transacoes(
+        self,
+        tipo: str | None = None,
+        categoria: str | None = None,
+    ) -> list:
         """
-        Retorna todas as transações com filtros opcionais.
+        Retorna objetos Receita/Despesa do usuário, opcionalmente filtrados.
 
-        Usa list comprehension para filtrar em uma linha — conceito
-        de programação funcional aplicado ao Python.
+        Args:
+            tipo      : 'receita' | 'despesa' | None (todos)
+            categoria : string ou None (todas)
 
-        Parâmetros:
-            tipo      (str, opt): "receita" ou "despesa"
-            categoria (str, opt): nome exato da categoria
-
-        Retorna:
-            Lista de transações que satisfazem os filtros informados.
+        Returns:
+            Lista de objetos Receita/Despesa ordenados por data desc.
         """
-        resultado = list(self._transacoes)
+        transacoes = Persistencia.carregar_transacoes(self._usuario_id)
 
-        if tipo is not None:
-            resultado = [t for t in resultado if t.tipo() == tipo.strip().lower()]
+        if tipo:
+            transacoes = [t for t in transacoes if t.tipo == tipo]
+        if categoria:
+            transacoes = [t for t in transacoes if t.categoria == categoria]
 
-        if categoria is not None:
-            resultado = [
-                t for t in resultado
-                if str(t.categoria).strip().lower() == categoria.strip().lower()
-            ]
-
-        return resultado
+        return transacoes
 
     def saldo_atual(self) -> float:
         """
-        Calcula o saldo atual: total de receitas menos total de despesas.
+        Calcula receitas − despesas a partir do banco.
 
-        Usa list comprehension + sum() — forma pythônica de somar valores
-        de uma lista filtrada sem precisar de variável de loop explícita.
-
-        Retorna:
-            float com o saldo atual (pode ser negativo).
+        A view chama isso sem passar usuario_id — ele fica encapsulado aqui.
+        É a separação de responsabilidades funcionando: a view cuida da tela,
+        o gerenciador da regra, a persistência do banco.
         """
-        receitas = sum(t.valor for t in self._transacoes if t.tipo() == "receita")
-        despesas = sum(t.valor for t in self._transacoes if t.tipo() == "despesa")
-        return receitas - despesas
+        transacoes = Persistencia.carregar_transacoes(self._usuario_id)
+        receitas = sum(t.valor for t in transacoes if t.tipo == "receita")
+        despesas = sum(t.valor for t in transacoes if t.tipo == "despesa")
+        return round(receitas - despesas, 2)
 
-    def calcular_saldo(self) -> float:
+    # ------------------------------------------------------------------ #
+    #  METAS                                                               #
+    # ------------------------------------------------------------------ #
+
+    def adicionar_meta(
+        self,
+        nome: str,
+        valor_alvo: float,
+        prazo: str | None = None,
+    ) -> int:
         """
-        Alias de saldo_atual() para compatibilidade com as views.
-        Mantém retrocompatibilidade sem duplicar lógica.
+        Cria e persiste uma meta financeira.
+
+        Args:
+            nome       : Nome da meta. Ex.: 'Viagem para a praia'
+            valor_alvo : Valor total a atingir. Ex.: 1500.0
+            prazo      : Data ISO opcional. Ex.: '2026-12-31'
+
+        Returns:
+            id gerado no banco.
+
+        Raises:
+            ValueError: se nome vazio ou valor_alvo <= 0.
         """
-        return self.saldo_atual()
+        if not nome or not nome.strip():
+            raise ValueError("O nome da meta não pode ser vazio.")
+        if valor_alvo <= 0:
+            raise ValueError("O valor-alvo da meta deve ser maior que zero.")
 
-    # -------------------------------------------------------------------------
-    # METAS
-    # -------------------------------------------------------------------------
+        from models.meta import Meta
 
-    def adicionar_meta(self, nome: str, valor_alvo: float, prazo) -> Meta:
+        meta = Meta(nome.strip(), valor_alvo, prazo)
+        return Persistencia.salvar_meta(meta, self._usuario_id)
+
+    def depositar_em_meta(self, meta_id: int, valor: float) -> None:
         """
-        Cria uma Meta de economia e a registra na lista de metas.
+        Incrementa valor_atual de uma meta existente.
 
-        Parâmetros:
-            nome       (str)         : nome descritivo (ex.: "Viagem")
-            valor_alvo (float)       : valor total que se deseja atingir
-            prazo      (date ou str) : data limite para alcançar a meta
+        Por que atualizar_meta é separado de salvar_meta?
+            Depositar muda uma linha existente (UPDATE); criar insere uma
+            nova (INSERT). São operações SQL diferentes.
 
-        Retorna:
-            Objeto Meta recém-criado.
-
-        Lança:
-            ValueError se já existir uma meta com o mesmo nome.
+        Raises:
+            ValueError: se valor <= 0.
+            LookupError: se a meta não existir ou não pertencer ao usuário.
         """
-        nomes_existentes = [m.nome.lower() for m in self._metas]
-        if nome.strip().lower() in nomes_existentes:
-            raise ValueError(f"Já existe uma meta com o nome '{nome}'.")
-        meta = Meta(nome, valor_alvo, prazo)
-        self._metas.append(meta)
-        return meta
+        if valor <= 0:
+            raise ValueError("O valor do depósito deve ser maior que zero.")
 
-    def remover_meta(self, indice: int) -> bool:
-        """
-        Remove a meta na posição `indice` da lista (0-based).
+        metas = Persistencia.carregar_metas(self._usuario_id)
+        meta = next((m for m in metas if m.id == meta_id), None)
 
-        Lança:
-            IndexError se o índice estiver fora do intervalo.
-        """
-        if indice < 0 or indice >= len(self._metas):
-            raise IndexError(f"Índice {indice} fora do intervalo.")
-        del self._metas[indice]
-        return True
-
-    def listar_metas(self) -> List[Meta]:
-        """Retorna cópia da lista de metas cadastradas."""
-        return list(self._metas)
-
-    def buscar_meta(self, nome: str) -> Optional[Meta]:
-        """
-        Busca uma meta pelo nome (case-insensitive).
-
-        Retorna:
-            Objeto Meta ou None se não encontrar.
-        """
-        for meta in self._metas:
-            if meta.nome.lower() == nome.strip().lower():
-                return meta
-        return None
-
-    def depositar_em_meta(self, nome: str, valor: float) -> None:
-        """Deposita um valor em uma meta existente pelo nome."""
-        meta = self.buscar_meta(nome)
         if meta is None:
-            raise ValueError(f"Meta '{nome}' não encontrada.")
-        meta.depositar(valor)
+            raise LookupError(f"Meta {meta_id} não encontrada para este usuário.")
 
-    def metas_concluidas(self) -> List[Meta]:
-        """Retorna apenas as metas que já atingiram o valor-alvo."""
-        return [m for m in self._metas if m.concluida()]
+        # Acumula sem ultrapassar o alvo (opcional — ajuste se o grupo quiser)
+        meta.valor_atual = min(meta.valor_atual + valor, meta.valor_alvo)
+        Persistencia.atualizar_meta(meta, self._usuario_id)
 
-    def metas_pendentes(self) -> List[Meta]:
-        """Retorna apenas as metas que ainda não atingiram o valor-alvo."""
-        return [m for m in self._metas if not m.concluida()]
+    def listar_metas(self) -> list:
+        """Retorna todos os objetos Meta do usuário."""
+        return Persistencia.carregar_metas(self._usuario_id)
 
-    # -------------------------------------------------------------------------
-    # PERSISTÊNCIA — auxiliar para services/persistencia.py e views/app.py
-    # -------------------------------------------------------------------------
+    def remover_meta(self, meta_id: int) -> None:
+        """Remove uma meta pelo id, garantindo que pertence ao usuário."""
+        Persistencia.remover_meta(meta_id, self._usuario_id)
 
-    def carregar_transacoes(self, lista_transacoes: list) -> None:
+    # ------------------------------------------------------------------ #
+    #  CONTAS A PAGAR / RECEBER  (funcionalidade empresa)                  #
+    # ------------------------------------------------------------------ #
+
+    def adicionar_conta(
+        self,
+        tipo: str,
+        descricao: str,
+        valor: float,
+        vencimento: str,
+    ) -> int:
         """
-        Carrega transações restauradas do arquivo ao iniciar o app.
-        Chamado por app.py em _carregar_dados() logo após Persistencia.carregar().
+        Cria e persiste uma conta a pagar ou receber.
 
-        Parâmetros:
-            lista_transacoes (list): objetos Receita e Despesa reconstruídos
-                                     pela camada de persistência.
+        Args:
+            tipo       : 'pagar' | 'receber'
+            descricao  : Texto. Ex.: 'Aluguel maio'
+            valor      : Valor positivo.
+            vencimento : Data ISO. Ex.: '2026-06-20'
+
+        Returns:
+            id gerado no banco.
+
+        Raises:
+            ValueError: se tipo inválido, descricao vazio ou valor <= 0.
         """
-        self._transacoes = list(lista_transacoes)
+        if tipo not in ("pagar", "receber"):
+            raise ValueError("tipo deve ser 'pagar' ou 'receber'.")
+        if not descricao or not descricao.strip():
+            raise ValueError("A descrição da conta não pode ser vazia.")
+        if valor <= 0:
+            raise ValueError("O valor da conta deve ser maior que zero.")
 
-    def carregar_metas(self, lista) -> None:
+        from models.conta import Conta
+
+        conta = Conta(tipo, descricao.strip(), valor, vencimento)
+        return Persistencia.salvar_conta(conta, self._usuario_id)
+
+    def marcar_conta_paga(self, conta_id: int) -> None:
         """
-        Carrega metas restauradas do arquivo ao iniciar o app.
-        Aceita lista de objetos Meta ou lista de dicionários (from_dict).
+        Marca uma conta como paga (pago: 0 → 1).
 
-        Parâmetros:
-            lista: lista de objetos Meta ou lista de dicts serializados.
+        Por que pago é 0/1?
+            SQLite não tem tipo booleano; a convenção universal é
+            0 = falso, 1 = verdadeiro.
         """
-        if lista and isinstance(lista[0], dict):
-            self._metas = [Meta.from_dict(d) for d in lista]
-        else:
-            self._metas = list(lista)
+        Persistencia.marcar_conta_paga(conta_id, self._usuario_id)
 
-    def get_transacoes(self) -> list:
-        """Retorna todas as transações — usado por app.py ao fechar para salvar."""
-        return list(self._transacoes)
+    def listar_contas(self, tipo: str | None = None) -> list:
+        """
+        Retorna objetos Conta do usuário, opcionalmente filtrados por tipo.
 
-    def get_metas(self) -> list:
-        """Retorna todas as metas — usado por app.py ao fechar para salvar."""
-        return list(self._metas)
+        Args:
+            tipo : 'pagar' | 'receber' | None (todas)
+        """
+        contas = Persistencia.carregar_contas(self._usuario_id)
 
-    def metas_para_salvar(self) -> List[dict]:
-        """Serializa as metas para persistência em arquivo."""
-        return [m.to_dict() for m in self._metas]
+        if tipo:
+            contas = [c for c in contas if c.tipo == tipo]
 
-    def resumo(self) -> dict:
-        """Retorna dicionário com totais gerais do sistema."""
-        return {
-            "total_transacoes": len(self._transacoes),
-            "total_metas":      len(self._metas),
-        }
+        return contas
+
+    def remover_conta(self, conta_id: int) -> None:
+        """Remove uma conta pelo id, garantindo que pertence ao usuário."""
+        Persistencia.remover_conta(conta_id, self._usuario_id)
+
+    # ------------------------------------------------------------------ #
+    #  HELPERS PRIVADOS                                                    #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _validar_transacao(descricao: str, valor: float) -> None:
+        """Validação compartilhada entre adicionar_receita e adicionar_despesa."""
+        if not descricao or not descricao.strip():
+            raise ValueError("A descrição da transação não pode ser vazia.")
+        if valor <= 0:
+            raise ValueError("O valor da transação deve ser maior que zero.")
