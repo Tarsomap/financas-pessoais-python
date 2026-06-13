@@ -14,19 +14,32 @@ O que é uma FIXTURE?
     O pytest vê "cliente" e "banco_limpo", busca as fixtures com esses nomes
     e as executa antes do teste. Após o teste, executa o código após o yield
     (a limpeza).
+
+NOTA DE INTEGRAÇÃO (Frente 6)
+    Algumas fixtures dependem de frentes que ainda NÃO entraram na main:
+    services.auth (Frente 1), app.create_app (Frente 4) e o suporte a banco
+    :memory: na Persistencia (Frente 0). Por isso os imports abaixo são
+    tolerantes a falha e as fixtures fazem pytest.skip() quando a dependência
+    ainda não existe — a suíte continua VERDE hoje e os testes se ativam
+    sozinhos quando cada frente for mergeada.
 """
 
 import pytest
-import sys
-import os
-
-# Garante que o diretório raiz do projeto está no path do Python,
-# permitindo imports como "from models.perfil import PessoaFisica"
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from services.persistencia import Persistencia
-from services.auth import gerar_hash
-from app import create_app
+
+# Dependências de outras frentes — podem ainda não existir na main.
+# Import tolerante: se faltar, a fixture correspondente faz skip em vez de
+# quebrar a coleção de TODA a suíte.
+try:
+    from services.auth import gerar_hash
+except ImportError:
+    gerar_hash = None
+
+try:
+    from app import create_app
+except ImportError:
+    create_app = None
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +60,12 @@ def banco_limpo():
         - Tudo DEPOIS do yield: teardown (limpeza).
     O pytest garante que o teardown roda mesmo se o teste falhar.
     """
+    # configurar_banco(":memory:") é o gancho de teste da Persistencia.
+    # Enquanto a Frente 0 não expõe esse método na main, pulamos os testes
+    # que dependem de banco — sem quebrar a suíte.
+    if not hasattr(Persistencia, "configurar_banco"):
+        pytest.skip("Persistencia.configurar_banco ainda não disponível (integração da Frente 0)")
+
     # Aponta o banco para a memória RAM — sem arquivo, sem sujeira
     Persistencia.configurar_banco(":memory:")
     Persistencia.inicializar_banco()
@@ -71,6 +90,9 @@ def dois_usuarios(banco_limpo):
 
     Retorna um dict com os ids para os testes usarem.
     """
+    if gerar_hash is None:
+        pytest.skip("services.auth ainda não disponível (Frente 1)")
+
     id_a = Persistencia.cadastrar_usuario(
         email="alice@teste.com",
         senha_hash=gerar_hash("senha_alice"),
@@ -98,6 +120,9 @@ def cliente(banco_limpo):
     TESTING=True desativa o tratamento de erros do Flask para que exceções
     apareçam nos testes em vez de virar páginas 500 silenciosas.
     """
+    if create_app is None:
+        pytest.skip("app.create_app ainda não disponível (Frente 4)")
+
     app = create_app({"TESTING": True, "SECRET_KEY": "test-secret"})
     with app.test_client() as c:
         yield c

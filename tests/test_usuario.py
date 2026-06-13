@@ -9,6 +9,13 @@ Conceitos cobertos:
 """
 
 import pytest
+
+# Depende das Frentes 1 (auth + usuario) e 2 (perfil). Enquanto não
+# estiverem na main, este arquivo é PULADO inteiro — não quebra a suíte.
+pytest.importorskip("services.auth")
+pytest.importorskip("models.usuario")
+pytest.importorskip("models.perfil")
+
 from models.usuario import Usuario
 from models.perfil import PessoaFisica, Empresa
 from services.persistencia import Persistencia

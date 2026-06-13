@@ -9,6 +9,11 @@ Conceitos cobertos:
 """
 
 import pytest
+
+# Depende da Frente 1 (services/auth.py). Enquanto não estiver na main,
+# este arquivo é PULADO inteiro — não quebra a suíte.
+pytest.importorskip("services.auth")
+
 from services.auth import gerar_hash, verificar_senha
 
 

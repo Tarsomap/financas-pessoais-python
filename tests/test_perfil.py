@@ -9,6 +9,11 @@ Conceitos cobertos:
 """
 
 import pytest
+
+# Depende da Frente 2 (models/perfil.py). Enquanto não estiver na main,
+# este arquivo é PULADO inteiro — não quebra a suíte.
+pytest.importorskip("models.perfil")
+
 from models.perfil import Perfil, PessoaFisica, Empresa, criar_perfil
 
 

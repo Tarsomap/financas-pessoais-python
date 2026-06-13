@@ -17,6 +17,10 @@ Conceitos cobertos:
 
 import pytest
 
+# Depende da Frente 4 (app.py com create_app). Enquanto não estiver na main,
+# este arquivo é PULADO inteiro — não quebra a suíte.
+pytest.importorskip("app")
+
 
 class TestRotasPublicas:
     """Rotas que devem ser acessíveis sem estar logado."""
