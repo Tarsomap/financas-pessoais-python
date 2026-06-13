@@ -66,14 +66,16 @@ class Gerenciador:
             ValueError: se valor <= 0 ou descricao vazio.
         """
         self._validar_transacao(descricao, valor)
-        data = data or date.today().isoformat()
+        # O model trabalha com date; a conversão para texto ISO é da Persistencia.
+        # Entregamos um date (nunca string) para não quebrar transacao.data.isoformat().
+        data_obj = date.fromisoformat(data) if data else date.today()
 
         # Importação local evita importar Receita em todo lugar;
         # a Persistencia devolve objetos tipados — só precisamos do modelo
         # para montar o dict que ela espera.
         from models.transacao import Receita
 
-        transacao = Receita(descricao, valor, categoria, data)
+        transacao = Receita(descricao, valor, categoria, data_obj)
         return Persistencia.salvar_transacao(transacao, self._usuario_id)
 
     def adicionar_despesa(
@@ -89,11 +91,12 @@ class Gerenciador:
         Mesmos parâmetros de adicionar_receita; tipo fica como 'despesa'.
         """
         self._validar_transacao(descricao, valor)
-        data = data or date.today().isoformat()
+        # Mesma regra de adicionar_receita: o model recebe date, não string.
+        data_obj = date.fromisoformat(data) if data else date.today()
 
         from models.transacao import Despesa
 
-        transacao = Despesa(descricao, valor, categoria, data)
+        transacao = Despesa(descricao, valor, categoria, data_obj)
         return Persistencia.salvar_transacao(transacao, self._usuario_id)
 
     def remover_transacao(self, transacao_id: int) -> None:
@@ -125,7 +128,7 @@ class Gerenciador:
         transacoes = Persistencia.carregar_transacoes(self._usuario_id)
 
         if tipo:
-            transacoes = [t for t in transacoes if t.tipo == tipo]
+            transacoes = [t for t in transacoes if t.tipo() == tipo]
         if categoria:
             transacoes = [t for t in transacoes if t.categoria == categoria]
 
@@ -140,8 +143,8 @@ class Gerenciador:
         o gerenciador da regra, a persistência do banco.
         """
         transacoes = Persistencia.carregar_transacoes(self._usuario_id)
-        receitas = sum(t.valor for t in transacoes if t.tipo == "receita")
-        despesas = sum(t.valor for t in transacoes if t.tipo == "despesa")
+        receitas = sum(t.valor for t in transacoes if t.tipo() == "receita")
+        despesas = sum(t.valor for t in transacoes if t.tipo() == "despesa")
         return round(receitas - despesas, 2)
 
     # ------------------------------------------------------------------ #
@@ -175,7 +178,12 @@ class Gerenciador:
 
         from models.meta import Meta
 
-        meta = Meta(nome.strip(), valor_alvo, prazo)
+        # salvar_meta só persiste o prazo quando ele é um date (hasattr .isoformat);
+        # se chegasse como string ISO, o prazo seria descartado (gravado NULL).
+        # Convertendo aqui, o model recebe date e o prazo é de fato salvo.
+        prazo_obj = date.fromisoformat(prazo) if prazo else None
+
+        meta = Meta(nome.strip(), valor_alvo, prazo_obj)
         return Persistencia.salvar_meta(meta, self._usuario_id)
 
     def depositar_em_meta(self, meta_id: int, valor: float) -> None:
