@@ -84,24 +84,14 @@ def dois_usuarios(banco_limpo):
     """
     Cria dois usuários distintos no banco de teste.
 
-    Usada pelos testes de ISOLAMENTO — o teste mais importante da suíte.
-    Recebe banco_limpo como parâmetro: o pytest resolve dependências entre
-    fixtures automaticamente (composição de fixtures).
-
-    Retorna um dict com os ids para os testes usarem.
+    Usa hashes fictícios — cadastrar_usuario só precisa de uma string, então
+    a fixture não depende de services.auth (Frente 1).
     """
-    if gerar_hash is None:
-        pytest.skip("services.auth ainda não disponível (Frente 1)")
-
     id_a = Persistencia.cadastrar_usuario(
-        email="alice@teste.com",
-        senha_hash=gerar_hash("senha_alice"),
-        tipo_perfil="pessoa_fisica"
+        email="alice@teste.com", senha_hash="hash_ficticio_a", tipo_perfil="pessoa_fisica"
     )
     id_b = Persistencia.cadastrar_usuario(
-        email="bob@teste.com",
-        senha_hash=gerar_hash("senha_bob"),
-        tipo_perfil="empresa"
+        email="bob@teste.com", senha_hash="hash_ficticio_b", tipo_perfil="empresa"
     )
     return {"id_a": id_a, "id_b": id_b}
 
