@@ -41,6 +41,46 @@ CAMINHO_SCHEMA: str = os.path.join(
 class Persistencia:
     """Camada de acesso a dados: lê e grava no banco SQLite db/financas.db."""
 
+    # Banco em uso. Por padrão o arquivo db/financas.db; os testes trocam para
+    # um banco :memory: via configurar_banco(). São atributos de CLASSE (não
+    # constantes globais) justamente para que a troca valha para todos os
+    # métodos de uma vez.
+    _caminho_banco: str = CAMINHO_BANCO
+    _uri_mode: bool = False
+    # Conexão "keep-alive" usada apenas no modo :memory: (ver configurar_banco).
+    _conn_keepalive: "sqlite3.Connection | None" = None
+
+    # -------------------------------------------------------------------------
+    # Configuração do banco  (gancho de teste — Frente 0 ⇄ Frente 6)
+    # -------------------------------------------------------------------------
+
+    @classmethod
+    def configurar_banco(cls, caminho: str) -> None:
+        """
+        Troca o banco em uso. Usado pelos testes para isolar cada caso num
+        banco SQLite em memória, sem tocar db/financas.db nem o disco.
+
+        Para ':memory:' usamos uma URI de cache COMPARTILHADO
+        ('file:...?mode=memory&cache=shared') e mantemos uma conexão
+        'keep-alive' aberta. Sem isso, um ':memory:' comum seria recriado
+        vazio a cada nova conexão — e cada método aqui abre e fecha a sua.
+        A conexão keep-alive ancora o banco em memória enquanto o teste roda;
+        as conexões de operação entram e saem sem apagar os dados.
+        """
+        # Fecha um keep-alive anterior antes de trocar (evita vazar conexão).
+        if cls._conn_keepalive is not None:
+            cls._conn_keepalive.close()
+            cls._conn_keepalive = None
+
+        if caminho == ":memory:":
+            cls._caminho_banco = "file:financas_memoria?mode=memory&cache=shared"
+            cls._uri_mode = True
+            # Ancora o banco em memória; não executa queries, só o mantém vivo.
+            cls._conn_keepalive = sqlite3.connect(cls._caminho_banco, uri=True)
+        else:
+            cls._caminho_banco = caminho
+            cls._uri_mode = False
+
     # -------------------------------------------------------------------------
     # Helpers privados de infraestrutura  (convenção: prefixo _)
     # -------------------------------------------------------------------------
@@ -56,7 +96,9 @@ class Persistencia:
         """
         # Cria db/financas.db se ainda não existir (mas NÃO cria a pasta db/,
         # por isso inicializar_banco() precisa garantir a pasta antes).
-        conn = sqlite3.connect(CAMINHO_BANCO)
+        # _caminho_banco/_uri_mode podem ter sido trocados por configurar_banco()
+        # (modo :memory: nos testes); por padrão apontam para db/financas.db.
+        conn = sqlite3.connect(Persistencia._caminho_banco, uri=Persistencia._uri_mode)
 
         # PRAGMA foreign_keys é uma configuração POR CONEXÃO, não persistida
         # no arquivo do banco. Toda nova conexão começa com foreign_keys = OFF,
@@ -128,7 +170,9 @@ class Persistencia:
         """
         # Garante que a pasta db/ existe antes de sqlite3.connect() tentar
         # criar o arquivo — connect() não cria subdiretórios, só o arquivo.
-        os.makedirs(os.path.dirname(CAMINHO_BANCO), exist_ok=True)
+        # Em modo :memory: (URI) não há arquivo nem pasta a criar.
+        if not Persistencia._uri_mode:
+            os.makedirs(os.path.dirname(Persistencia._caminho_banco), exist_ok=True)
 
         # Lê o schema completo como string — executescript() espera texto puro.
         with open(CAMINHO_SCHEMA, "r", encoding="utf-8") as arquivo_schema:
