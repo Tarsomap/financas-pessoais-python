@@ -8,7 +8,7 @@ class Perfil(ABC):
     """Classe base dos perfis de usuário. Não pode ser instanciada direto."""
 
     @abstractmethod
-    def categorias_disponiveis(self) -> list:
+    def categorias_disponiveis(self) -> list[str]:
         """Categorias de transação que esse perfil pode usar."""
         pass
 
@@ -35,7 +35,7 @@ class PessoaFisica(Perfil):
         "Outros",
     ]
 
-    def categorias_disponiveis(self) -> list:
+    def categorias_disponiveis(self) -> list[str]:
         return list(self.CATEGORIAS)
 
     def tipo_str(self) -> str:
@@ -56,7 +56,7 @@ class Empresa(Perfil):
         "Outros",
     ]
 
-    def categorias_disponiveis(self) -> list:
+    def categorias_disponiveis(self) -> list[str]:
         return list(self.CATEGORIAS)
 
     def tipo_str(self) -> str:
@@ -64,7 +64,10 @@ class Empresa(Perfil):
 
 
 def criar_perfil(tipo: str) -> Perfil:
-    """Factory: recebe o texto do banco e devolve o Perfil certo."""
+    """Factory: recebe o texto do banco e devolve o Perfil certo.
+
+    Levanta ValueError se o tipo for vazio ou desconhecido.
+    """
     if not tipo:
         raise ValueError("Tipo de perfil não pode ser vazio.")
 
