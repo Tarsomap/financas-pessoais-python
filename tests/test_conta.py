@@ -142,3 +142,41 @@ class TestContaViaGerenciador:
         assert len(g.listar_contas(tipo="pagar")) == 1
         assert len(g.listar_contas(tipo="receber")) == 1
         assert len(g.listar_contas()) == 2
+
+
+from datetime import date
+
+
+class TestContaComportamento:
+    """Validação no construtor e métodos esta_vencida/para_dict."""
+
+    def test_tipo_invalido_levanta(self):
+        with pytest.raises(ValueError):
+            Conta(tipo="xpto", descricao="X", valor=10.0, vencimento="2026-01-01")
+
+    def test_valor_invalido_levanta(self):
+        with pytest.raises(ValueError):
+            Conta(tipo="pagar", descricao="X", valor=0, vencimento="2026-01-01")
+
+    def test_descricao_vazia_levanta(self):
+        with pytest.raises(ValueError):
+            Conta(tipo="pagar", descricao="   ", valor=10.0, vencimento="2026-01-01")
+
+    def test_esta_vencida_quando_passou_e_nao_paga(self):
+        c = Conta(tipo="pagar", descricao="X", valor=10.0, vencimento="2026-01-01")
+        assert c.esta_vencida(date(2026, 6, 1)) is True
+
+    def test_nao_vencida_se_paga(self):
+        c = Conta(tipo="pagar", descricao="X", valor=10.0, vencimento="2026-01-01", pago=True)
+        assert c.esta_vencida(date(2026, 6, 1)) is False
+
+    def test_nao_vencida_se_vencimento_futuro(self):
+        c = Conta(tipo="pagar", descricao="X", valor=10.0, vencimento="2026-12-31")
+        assert c.esta_vencida(date(2026, 6, 1)) is False
+
+    def test_para_dict(self):
+        c = Conta(tipo="pagar", descricao="Aluguel", valor=1500.0, vencimento="2026-06-01")
+        assert c.para_dict() == {
+            "tipo": "pagar", "descricao": "Aluguel", "valor": 1500.0,
+            "vencimento": "2026-06-01", "pago": False,
+        }
