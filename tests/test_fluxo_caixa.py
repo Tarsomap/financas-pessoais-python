@@ -82,3 +82,19 @@ class TestDiferenciacaoPerfil:
         fc = FluxoCaixa(contas)
         assert fc.mostra_recebiveis() is True
         assert fc.saldo_projetado() == 600.0
+
+
+class TestGerenciadorFluxo:
+    def test_fluxo_de_caixa_via_gerenciador(self, banco_limpo):
+        from services.persistencia import Persistencia
+        from services.gerenciador import Gerenciador
+
+        uid = Persistencia.cadastrar_usuario("e@e.com", "hash_ficticio", "empresa")
+        g = Gerenciador(uid)
+        g.adicionar_conta("pagar", "Fornecedor", 300.0, "2026-06-01")
+        g.adicionar_conta("receber", "Cliente", 500.0, "2026-06-10")
+
+        fc = g.fluxo_de_caixa(Empresa())
+        assert fc.total_a_pagar() == 300.0
+        assert fc.total_a_receber() == 500.0
+        assert fc.saldo_projetado() == 200.0

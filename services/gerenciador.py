@@ -285,6 +285,19 @@ class Gerenciador:
         """Remove uma conta pelo id, garantindo que pertence ao usuário."""
         Persistencia.remover_conta(conta_id, self._usuario_id)
 
+    def fluxo_de_caixa(self, perfil=None) -> "FluxoCaixa":
+        """
+        Monta o fluxo de caixa do usuário (contas a pagar/receber).
+
+        Recebe o perfil (da sessão) para adaptar os indicadores; None cai no
+        comportamento completo de empresa. Não busca o usuário no banco — assim
+        não depende da Frente 1 (models/usuario.py).
+        """
+        from services.fluxo_caixa import FluxoCaixa
+
+        contas = Persistencia.carregar_contas(self._usuario_id)
+        return FluxoCaixa(contas, perfil)
+
     # ------------------------------------------------------------------ #
     #  HELPERS PRIVADOS                                                    #
     # ------------------------------------------------------------------ #
