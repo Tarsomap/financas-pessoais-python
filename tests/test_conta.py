@@ -10,15 +10,16 @@ Conceitos cobertos:
 
 import pytest
 
-# Depende das Frentes 5 (models/conta.py) e 1 (services/auth.py). Enquanto
-# não estiverem na main, este arquivo é PULADO inteiro — não quebra a suíte.
-pytest.importorskip("services.auth")
+# Depende da Frente 5 (models/conta.py). Enquanto não estiver na main,
+# este arquivo é PULADO inteiro — não quebra a suíte.
+# Nota: services.auth (Frente 1) não é mais necessário aqui; os testes de
+# persistência usam hashes fictícios direto — Persistencia.cadastrar_usuario
+# só precisa de uma string qualquer como senha_hash.
 pytest.importorskip("models.conta")
 
 from models.conta import Conta
 from services.persistencia import Persistencia
 from services.gerenciador import Gerenciador
-from services.auth import gerar_hash
 
 
 class TestModelConta:
@@ -45,7 +46,7 @@ class TestModelConta:
 class TestContaPersistencia:
 
     def test_salvar_e_listar_conta(self, banco_limpo):
-        id_usuario = Persistencia.cadastrar_usuario("u@u.com", gerar_hash("s"), "empresa")
+        id_usuario = Persistencia.cadastrar_usuario("u@u.com", "hash_ficticio", "empresa")
         c = Conta(tipo="pagar", descricao="Fornecedor", valor=500.0, vencimento="2024-07-01")
 
         Persistencia.salvar_conta(c, id_usuario)
@@ -61,7 +62,7 @@ class TestContaPersistencia:
         pago é armazenado como 0/1 no SQLite (sem tipo boolean).
         Após marcar_conta_paga, deve ser carregado como True.
         """
-        id_usuario = Persistencia.cadastrar_usuario("emp@emp.com", gerar_hash("s"), "empresa")
+        id_usuario = Persistencia.cadastrar_usuario("emp@emp.com", "hash_ficticio", "empresa")
         c = Conta(tipo="pagar", descricao="Conta de luz", valor=200.0, vencimento="2024-06-10")
         id_conta = Persistencia.salvar_conta(c, id_usuario)
 
@@ -71,7 +72,7 @@ class TestContaPersistencia:
         assert contas[0].pago is True
 
     def test_remover_conta(self, banco_limpo):
-        id_usuario = Persistencia.cadastrar_usuario("x@x.com", gerar_hash("s"), "empresa")
+        id_usuario = Persistencia.cadastrar_usuario("x@x.com", "hash_ficticio", "empresa")
         c = Conta(tipo="receber", descricao="Cliente", valor=1000.0, vencimento="2024-08-01")
         id_conta = Persistencia.salvar_conta(c, id_usuario)
 
@@ -122,7 +123,7 @@ class TestContaPersistencia:
 class TestContaViaGerenciador:
 
     def test_gerenciador_adicionar_e_listar_conta(self, banco_limpo):
-        id_usuario = Persistencia.cadastrar_usuario("ger@ger.com", gerar_hash("s"), "empresa")
+        id_usuario = Persistencia.cadastrar_usuario("ger@ger.com", "hash_ficticio", "empresa")
         g = Gerenciador(id_usuario)
 
         g.adicionar_conta("pagar", "Aluguel", 2000.0, "2024-06-01")
@@ -132,7 +133,7 @@ class TestContaViaGerenciador:
         assert contas[0].descricao == "Aluguel"
 
     def test_gerenciador_filtrar_por_tipo(self, banco_limpo):
-        id_usuario = Persistencia.cadastrar_usuario("fil@fil.com", gerar_hash("s"), "empresa")
+        id_usuario = Persistencia.cadastrar_usuario("fil@fil.com", "hash_ficticio", "empresa")
         g = Gerenciador(id_usuario)
 
         g.adicionar_conta("pagar", "Fornecedor", 300.0, "2024-06-01")
@@ -141,3 +142,41 @@ class TestContaViaGerenciador:
         assert len(g.listar_contas(tipo="pagar")) == 1
         assert len(g.listar_contas(tipo="receber")) == 1
         assert len(g.listar_contas()) == 2
+
+
+from datetime import date
+
+
+class TestContaComportamento:
+    """Validação no construtor e métodos esta_vencida/para_dict."""
+
+    def test_tipo_invalido_levanta(self):
+        with pytest.raises(ValueError):
+            Conta(tipo="xpto", descricao="X", valor=10.0, vencimento="2026-01-01")
+
+    def test_valor_invalido_levanta(self):
+        with pytest.raises(ValueError):
+            Conta(tipo="pagar", descricao="X", valor=0, vencimento="2026-01-01")
+
+    def test_descricao_vazia_levanta(self):
+        with pytest.raises(ValueError):
+            Conta(tipo="pagar", descricao="   ", valor=10.0, vencimento="2026-01-01")
+
+    def test_esta_vencida_quando_passou_e_nao_paga(self):
+        c = Conta(tipo="pagar", descricao="X", valor=10.0, vencimento="2026-01-01")
+        assert c.esta_vencida(date(2026, 6, 1)) is True
+
+    def test_nao_vencida_se_paga(self):
+        c = Conta(tipo="pagar", descricao="X", valor=10.0, vencimento="2026-01-01", pago=True)
+        assert c.esta_vencida(date(2026, 6, 1)) is False
+
+    def test_nao_vencida_se_vencimento_futuro(self):
+        c = Conta(tipo="pagar", descricao="X", valor=10.0, vencimento="2026-12-31")
+        assert c.esta_vencida(date(2026, 6, 1)) is False
+
+    def test_para_dict(self):
+        c = Conta(tipo="pagar", descricao="Aluguel", valor=1500.0, vencimento="2026-06-01")
+        assert c.para_dict() == {
+            "tipo": "pagar", "descricao": "Aluguel", "valor": 1500.0,
+            "vencimento": "2026-06-01", "pago": False,
+        }

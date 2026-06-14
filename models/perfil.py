@@ -17,6 +17,15 @@ class Perfil(ABC):
         """Valor salvo na coluna tipo_perfil do banco."""
         pass
 
+    @abstractmethod
+    def tipos_conta(self) -> tuple[str, ...]:
+        """Tipos de conta a pagar/receber que este perfil pode ter."""
+        pass
+
+    def permite_tipo_conta(self, tipo: str) -> bool:
+        """Indica se este perfil pode ter uma conta do tipo informado."""
+        return tipo in self.tipos_conta()
+
     def __str__(self) -> str:
         return self.tipo_str()
 
@@ -41,6 +50,9 @@ class PessoaFisica(Perfil):
     def tipo_str(self) -> str:
         return "pessoa_fisica"
 
+    def tipos_conta(self) -> tuple[str, ...]:
+        return ("pagar",)  # pessoa física: só contas a pagar
+
 
 class Empresa(Perfil):
     """Perfil de empresa - foco em fluxo de caixa e contas."""
@@ -61,6 +73,9 @@ class Empresa(Perfil):
 
     def tipo_str(self) -> str:
         return "empresa"
+
+    def tipos_conta(self) -> tuple[str, ...]:
+        return ("pagar", "receber")  # empresa: pagar + recebíveis
 
 
 def criar_perfil(tipo: str) -> Perfil:
