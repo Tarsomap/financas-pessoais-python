@@ -44,6 +44,18 @@ class TestModelUsuario:
         assert u.perfil.tipo_str() == "empresa"
 
 
+    def test_cria_perfil_a_partir_do_tipo_perfil(self):
+        u = Usuario(
+            id=1,
+            email="emp@teste.com",
+            senha_hash="hash123",
+            tipo_perfil="empresa",
+        )
+
+        assert isinstance(u.perfil, Empresa)
+        assert u.tipo_perfil == "empresa"
+
+
 class TestCadastroEBusca:
     """Testa fluxo completo de cadastro e recuperação do banco."""
 

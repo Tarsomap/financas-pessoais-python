@@ -14,7 +14,13 @@ import pytest
 # este arquivo é PULADO inteiro — não quebra a suíte.
 pytest.importorskip("services.auth")
 
-from services.auth import gerar_hash, verificar_senha
+from services.auth import (
+    autenticar,
+    cadastrar_usuario,
+    gerar_hash,
+    login,
+    verificar_senha,
+)
 
 
 class TestHash:
@@ -102,3 +108,63 @@ class TestVerificacaoSenha:
         assert verificar_senha(senha_cadastro, hash_salvo) is True
         # Tentativa de ataque
         assert verificar_senha("tentativa_hacker", hash_salvo) is False
+
+    def test_hash_mal_formatado_retorna_false(self):
+        """Hash quebrado ou antigo nao deve autenticar por acidente."""
+        assert verificar_senha("qualquer", "hash_invalido") is False
+
+
+class TestCadastroELogin:
+
+    def test_cadastrar_usuario_cria_usuario_com_hash(self, banco_limpo):
+        """
+        Cadastro via servico deve salvar email normalizado e senha em hash.
+        """
+        usuario = cadastrar_usuario(
+            email=" NOVO@Teste.COM ",
+            senha="senha_segura_123",
+            tipo_perfil="empresa",
+        )
+
+        assert usuario.id > 0
+        assert usuario.email == "novo@teste.com"
+        assert usuario.perfil.tipo_str() == "empresa"
+        assert "senha_segura_123" not in usuario.senha_hash
+        assert verificar_senha("senha_segura_123", usuario.senha_hash) is True
+
+    def test_autenticar_com_senha_correta_retorna_usuario(self, banco_limpo):
+        usuario = cadastrar_usuario("login@teste.com", "minha_senha", "pessoa_fisica")
+
+        autenticado = autenticar("login@teste.com", "minha_senha")
+
+        assert autenticado is not None
+        assert autenticado.id == usuario.id
+        assert autenticado.email == "login@teste.com"
+
+    def test_autenticar_com_senha_errada_retorna_none(self, banco_limpo):
+        cadastrar_usuario("erro@teste.com", "senha_certa", "pessoa_fisica")
+
+        autenticado = autenticar("erro@teste.com", "senha_errada")
+
+        assert autenticado is None
+
+    def test_autenticar_email_inexistente_retorna_none(self, banco_limpo):
+        autenticado = autenticar("ninguem@teste.com", "senha")
+
+        assert autenticado is None
+
+    def test_login_e_alias_de_autenticar(self, banco_limpo):
+        usuario = cadastrar_usuario("alias@teste.com", "senha_alias", "empresa")
+
+        autenticado = login("alias@teste.com", "senha_alias")
+
+        assert autenticado is not None
+        assert autenticado.id == usuario.id
+
+    def test_cadastro_com_email_vazio_falha(self, banco_limpo):
+        with pytest.raises(ValueError):
+            cadastrar_usuario("   ", "senha", "pessoa_fisica")
+
+    def test_cadastro_com_senha_vazia_falha(self, banco_limpo):
+        with pytest.raises(ValueError):
+            cadastrar_usuario("sem_senha@teste.com", "", "pessoa_fisica")
