@@ -5,6 +5,7 @@
 from datetime import date
 from models.categoria import Categoria
 from models.transacao import Receita, Despesa
+from models.conta import Conta
 from services.relatorio import Relatorio
 
 # Dados usados em todos os testes
@@ -97,3 +98,40 @@ def test_sugestao_economia_20_porcento():
     sugestoes = rel.sugestoes_corte(2025, 4)
     alim = next(x for x in sugestoes if x["categoria"] == "Alimentação")
     assert alim["economia_sugerida"] == 240.00
+
+
+# --- fluxo_de_caixa (contas a pagar/receber por vencimento) ---
+# Diferente do saldo (realizado): projeta entradas/saídas futuras pelas
+# datas de VENCIMENTO das contas a pagar/receber.
+
+contas_fc = [
+    Conta("receber", "Cliente A", 1000.00, "2025-04-10"),   # entra em abril
+    Conta("pagar",   "Fornecedor", 400.00, "2025-04-15"),   # sai em abril
+    Conta("pagar",   "Aluguel",    900.00, "2025-05-01"),   # outro mês
+]
+rel_fc = Relatorio([], contas_fc)
+
+
+def test_fluxo_entradas_do_mes():
+    assert rel_fc.fluxo_de_caixa(2025, 4)["entradas"] == 1000.00
+
+def test_fluxo_saidas_do_mes():
+    assert rel_fc.fluxo_de_caixa(2025, 4)["saidas"] == 400.00
+
+def test_fluxo_saldo_projetado():
+    # 1000 a receber - 400 a pagar = 600 projetado
+    assert rel_fc.fluxo_de_caixa(2025, 4)["saldo_projetado"] == 600.00
+
+def test_fluxo_filtra_por_mes_de_vencimento():
+    # a conta de maio não conta em abril, e vice-versa
+    assert rel_fc.fluxo_de_caixa(2025, 5)["saidas"] == 900.00
+    assert rel_fc.fluxo_de_caixa(2025, 5)["entradas"] == 0.0
+
+def test_fluxo_mes_sem_contas():
+    fc = rel_fc.fluxo_de_caixa(2025, 12)
+    assert fc == {"entradas": 0.0, "saidas": 0.0, "saldo_projetado": 0.0}
+
+def test_fluxo_aceita_vencimento_como_date():
+    # vencimento pode chegar como date (vindo do banco) ou str ISO
+    contas = [Conta("pagar", "X", 50.0, date(2025, 4, 20))]
+    assert Relatorio([], contas).fluxo_de_caixa(2025, 4)["saidas"] == 50.0
