@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Transações - Finanças Pessoais{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>💰 Transações</h1>
+    
+    <!-- Formulário para adicionar nova transação -->
+    <div class="card">
+        <h2>➕ Nova Transação</h2>
+        <form method="POST" action="{{ url_for('transacoes.adicionar') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo:</label>
+                    <select name="tipo" required>
+                        <option value="receita">💰 Receita</option>
+                        <option value="despesa">💸 Despesa</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Descrição:</label>
+                    <input type="text" name="descricao" placeholder="Ex: Salário, Mercado..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Valor (R$):</label>
+                    <input type="number" step="0.01" name="valor" placeholder="0,00" required>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Categoria:</label>
+                    <input type="text" name="categoria" placeholder="Ex: Alimentação, Transporte..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Data:</label>
+                    <input type="date" name="data" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-primary">➕ Adicionar</button>
+        </form>
+    </div>
+    
+    <!-- Tabela de transações -->
+    <div class="card">
+        <h2>📋 Lista de Transações</h2>
+        
+        {% if transacoes %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Categoria</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transacoes %}
+                    <tr class="{{ 'receita-row' if t.tipo == 'receita' else 'despesa-row' }}">
+                        <td>{{ '💰 Receita' if t.tipo == 'receita' else '💸 Despesa' }}</td>
+                        <td>{{ t.descricao }}</td>
+                        <td class="valor {{ 'positivo' if t.tipo == 'receita' else 'negativo' }}">
+                            R$ {{ "%.2f"|format(t.valor) }}
+                        </td>
+                        <td>{{ t.categoria }}</td>
+                        <td>{{ t.data }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('transacoes.remover', id=t.id) }}" class="form-inline">
+                                <button type="submit" class="btn-danger" onclick="return confirm('Tem certeza que deseja remover esta transação?')">
+                                    🗑️ Remover
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Resumo rápido -->
+        <div class="resumo">
+            <h3>📊 Resumo</h3>
+            <p>Total de transações: <strong>{{ transacoes|length }}</strong></p>
+        </div>
+        {% else %}
+        <p class="empty-message">📭 Nenhuma transação cadastrada ainda. Adicione sua primeira transação acima!</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
