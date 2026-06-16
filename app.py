@@ -12,6 +12,8 @@ from flask import Flask
 from routes.dashboard import dashboard_bp
 from routes.transacoes import transacoes_bp
 from routes.metas import metas_bp
+from routes.auth import auth_bp
+from routes.contas import contas_bp
 
 
 # ============================================================================
@@ -42,23 +44,16 @@ app.secret_key = 'chave-temporaria-para-desenvolvimento-frontend'
 app.register_blueprint(dashboard_bp)
 
 # Transações - prefixo /transacoes
-# Livia vai criar este blueprint no arquivo routes/transacoes.py
 app.register_blueprint(transacoes_bp, url_prefix='/transacoes')
 
 # Metas - prefixo /metas
-# Livia vai criar este blueprint no arquivo routes/metas.py
 app.register_blueprint(metas_bp, url_prefix='/metas')
 
-# ============================================================================
-# BLUEPRINTS QUE SERÃO ADICIONADOS PELAS OUTRAS FRENTES (futuramente)
-# ============================================================================
-# Quando as outras frentes entregarem, basta descomentar as linhas abaixo:
-#
-# from routes.auth import auth_bp           # Frente 1 (Autenticação)
-# app.register_blueprint(auth_bp, url_prefix='/auth')
-#
-# from routes.contas import contas_bp       # Frente 5 (Empresa/Contas)
-# app.register_blueprint(contas_bp, url_prefix='/contas')
+# Autenticação (Frente 1) - prefixo /auth
+app.register_blueprint(auth_bp, url_prefix='/auth')
+
+# Contas a pagar/receber (Frente 5) - prefixo /contas
+app.register_blueprint(contas_bp, url_prefix='/contas')
 
 
 # ============================================================================

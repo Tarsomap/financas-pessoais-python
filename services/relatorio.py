@@ -1,13 +1,18 @@
 # services/relatorio.py
 # RESPONSÁVEL: Pessoa 4
 
+from datetime import date
+
 from models.transacao import Receita, Despesa
 
 
 class Relatorio:
-    def __init__(self, transacoes: list):
-        # Guarda a lista de transações recebida do Gerenciador
+    def __init__(self, transacoes: list, contas: list | None = None):
+        # Guarda a lista de transações recebida do Gerenciador.
         self._transacoes = transacoes
+        # Contas a pagar/receber (opcional): usadas só no fluxo de caixa.
+        # Default [] mantém compatível quem instancia só com transações.
+        self._contas = contas or []
 
     def _do_mes(self, ano: int, mes: int) -> list:
         # Filtra apenas as transações do mês/ano pedido
@@ -26,6 +31,38 @@ class Relatorio:
     def saldo_mes(self, ano: int, mes: int) -> float:
         # Saldo = receitas - despesas (pode ser negativo)
         return self.total_receitas_mes(ano, mes) - self.total_despesas_mes(ano, mes)
+
+    # --- Fluxo de caixa (contas a pagar/receber) ---
+
+    @staticmethod
+    def _vencimento(conta) -> date:
+        # Conta guarda o vencimento CRU: str ISO (criada na mão) ou date
+        # (reconstruída pela Persistencia). Normaliza para date e poder comparar.
+        v = conta.vencimento
+        return v if isinstance(v, date) else date.fromisoformat(v)
+
+    def fluxo_de_caixa(self, ano: int, mes: int) -> dict:
+        """
+        Projeção de caixa do mês pelas contas a pagar/receber que VENCEM nele.
+
+        Diferente do saldo (que é realizado): o fluxo de caixa olha o futuro —
+        o que ainda vai entrar (a receber) e sair (a pagar) pelas datas de
+        vencimento. Por isso usa as contas, não as transações.
+
+        Returns:
+            dict com 'entradas', 'saidas' e 'saldo_projetado' (entradas − saidas).
+        """
+        do_mes = [
+            c for c in self._contas
+            if self._vencimento(c).year == ano and self._vencimento(c).month == mes
+        ]
+        entradas = sum(c.valor for c in do_mes if c.tipo == "receber")
+        saidas   = sum(c.valor for c in do_mes if c.tipo == "pagar")
+        return {
+            "entradas":        round(float(entradas), 2),
+            "saidas":          round(float(saidas), 2),
+            "saldo_projetado": round(float(entradas - saidas), 2),
+        }
 
     # --- Gastos por categoria ---
 
@@ -87,79 +124,3 @@ class Relatorio:
 
         # Ordena da categoria mais pesada para a mais leve
         return sorted(sugestoes, key=lambda x: x["gasto"], reverse=True)
-
-    # =========================================================================
-    # MÉTODOS ESTÁTICOS — interface para a view TelaRelatorio (Alice)
-    # =========================================================================
-    # A view chama Relatorio.resumo_mensal(gerenciador, mes, ano) diretamente,
-    # sem instanciar a classe. Esses métodos fazem a ponte entre a API estática
-    # esperada pela view e os métodos de instância implementados acima.
-
-    @staticmethod
-    def resumo_mensal(gerenciador, mes: int, ano: int) -> dict:
-        """
-        Gera o resumo financeiro de um mês específico.
-        Usado por TelaRelatorio._gerar_relatorio().
-
-        Parâmetros:
-            gerenciador : instância de Gerenciador com as transações
-            mes (int)   : mês desejado (1-12)
-            ano (int)   : ano desejado
-
-        Retorna:
-            dict com chaves:
-                'receitas'      → total de receitas do mês
-                'despesas'      → total de despesas do mês
-                'saldo'         → receitas - despesas
-                'top_categoria' → tupla (nome, valor) da categoria que mais gastou
-                'categorias'    → dict {categoria: total_gasto}
-        """
-        # Cria uma instância local passando todas as transações do gerenciador
-        rel = Relatorio(gerenciador.listar_transacoes())
-
-        receitas   = rel.total_receitas_mes(ano, mes)
-        despesas   = rel.total_despesas_mes(ano, mes)
-        saldo      = rel.saldo_mes(ano, mes)
-        categorias = rel.gastos_por_categoria(ano, mes)
-
-        # Identifica a categoria com maior gasto (max() sobre o dict)
-        top_categoria = None
-        if categorias:
-            nome_top      = max(categorias, key=categorias.get)
-            top_categoria = (nome_top, categorias[nome_top])
-
-        return {
-            "receitas":      receitas,
-            "despesas":      despesas,
-            "saldo":         saldo,
-            "top_categoria": top_categoria,
-            "categorias":    categorias,
-        }
-
-    @staticmethod
-    def sugestao_corte(gerenciador, mes: int, ano: int) -> list:
-        """
-        Gera lista de sugestões de corte de gastos como strings legíveis.
-        Usado por TelaRelatorio._atualizar_sugestoes().
-
-        A view itera sobre a lista e exibe cada item diretamente como texto,
-        por isso retornamos strings em vez dos dicts de sugestoes_corte().
-
-        Parâmetros:
-            gerenciador : instância de Gerenciador com as transações
-            mes (int)   : mês desejado (1-12)
-            ano (int)   : ano desejado
-
-        Retorna:
-            Lista de strings com as sugestões formatadas para exibição.
-        """
-        rel   = Relatorio(gerenciador.listar_transacoes())
-        dicts = rel.sugestoes_corte(ano, mes)
-
-        # Converte cada dict em uma frase clara para o usuário
-        return [
-            f"{s['categoria']}: R$ {s['gasto']:.2f} "
-            f"({s['percentual']:.1f}% dos gastos) — "
-            f"Sugestão: economizar R$ {s['economia_sugerida']:.2f}"
-            for s in dicts
-        ]

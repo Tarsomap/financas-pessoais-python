@@ -10,7 +10,8 @@ Rotas:
 
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, session
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from services.gerenciador import Gerenciador
 
 # Cria o blueprint com prefixo /metas
 metas_bp = Blueprint('metas', __name__, url_prefix='/metas')
@@ -25,20 +26,13 @@ def listar():
     # Proteção: verifica se usuário está logado
     if 'usuario_id' not in session:
         return redirect(url_for('auth.login'))
-    
-    # TODO: Quando a Frente 3 entregar o Gerenciador, substituir por:
-    # from services.gerenciador import Gerenciador
-    # g = Gerenciador(session['usuario_id'])
-    # metas = g.listar_metas()
-    
-    # Dados temporários (fake) para testar a tela
-    # Remove quando o Gerenciador estiver pronto
-    metas = [
-        {'id': 1, 'nome': 'Viagem para praia', 'valor_alvo': 2000.00, 'valor_atual': 750.00, 'prazo': '2025-12-31'},
-        {'id': 2, 'nome': 'PS5', 'valor_alvo': 3500.00, 'valor_atual': 1200.00, 'prazo': '2025-08-15'},
-        {'id': 3, 'nome': 'Reserva de emergência', 'valor_alvo': 10000.00, 'valor_atual': 3500.00, 'prazo': None},
-    ]
-    
+
+    # Cria o gerenciador para o usuário logado
+    g = Gerenciador(session['usuario_id'])
+
+    # Obtém as metas reais do banco
+    metas = g.listar_metas()
+
     return render_template('metas.html', metas=metas)
 
 
@@ -51,37 +45,45 @@ def adicionar():
     # Proteção: verifica se usuário está logado
     if 'usuario_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     # Pega os dados do formulário
     nome = request.form.get('nome')
     valor_alvo = request.form.get('valor_alvo')
     prazo = request.form.get('prazo')
-    
+
     # Se prazo for vazio, vira None
     if not prazo:
         prazo = None
-    
+
     # Validações básicas
-    if not nome or not valor_alvo:
-        # TODO: mostrar mensagem de erro
+    if not nome:
+        flash('Por favor, informe o nome da meta!', 'error')
         return redirect(url_for('metas.listar'))
-    
+
+    if not valor_alvo:
+        flash('Por favor, informe o valor alvo da meta!', 'error')
+        return redirect(url_for('metas.listar'))
+
     try:
         valor_float = float(valor_alvo)
         if valor_float <= 0:
-            # TODO: mostrar mensagem de erro
+            flash('O valor alvo deve ser maior que zero!', 'error')
             return redirect(url_for('metas.listar'))
     except ValueError:
-        # TODO: mostrar mensagem de erro
+        flash('Por favor, informe um valor numérico válido!', 'error')
         return redirect(url_for('metas.listar'))
-    
-    # TODO: Quando a Frente 3 entregar o Gerenciador, substituir por:
-    # from services.gerenciador import Gerenciador
-    # g = Gerenciador(session['usuario_id'])
-    # g.adicionar_meta(nome, valor_float, prazo)
-    
-    print(f"[DEBUG] Adicionando meta: {nome} - R$ {valor_float} - Prazo: {prazo}")
-    
+
+    # Cria o gerenciador e adiciona a meta
+    g = Gerenciador(session['usuario_id'])
+
+    try:
+        g.adicionar_meta(nome, valor_float, prazo)
+        flash(f'Meta "{nome}" criada com sucesso!', 'success')
+    except ValueError as e:
+        flash(f'Erro ao criar meta: {str(e)}', 'error')
+    except Exception as e:
+        flash(f'Erro inesperado: {str(e)}', 'error')
+
     return redirect(url_for('metas.listar'))
 
 
@@ -93,27 +95,36 @@ def depositar(id):
     # Proteção: verifica se usuário está logado
     if 'usuario_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     # Pega o valor do depósito
     valor = request.form.get('valor')
-    
+
     if not valor:
+        flash('Por favor, informe um valor para depositar!', 'error')
         return redirect(url_for('metas.listar'))
-    
+
     try:
         valor_float = float(valor)
         if valor_float <= 0:
+            flash('O valor do depósito deve ser maior que zero!', 'error')
             return redirect(url_for('metas.listar'))
     except ValueError:
+        flash('Por favor, informe um valor numérico válido!', 'error')
         return redirect(url_for('metas.listar'))
-    
-    # TODO: Quando a Frente 3 entregar o Gerenciador, substituir por:
-    # from services.gerenciador import Gerenciador
-    # g = Gerenciador(session['usuario_id'])
-    # g.depositar_em_meta(id, valor_float)
-    
-    print(f"[DEBUG] Depositando R$ {valor_float} na meta ID: {id}")
-    
+
+    # Cria o gerenciador e deposita na meta
+    g = Gerenciador(session['usuario_id'])
+
+    try:
+        g.depositar_em_meta(id, valor_float)
+        flash(f'Depósito de R$ {valor_float:.2f} realizado com sucesso!', 'success')
+    except LookupError as e:
+        flash(f'Meta não encontrada: {str(e)}', 'error')
+    except ValueError as e:
+        flash(f'Erro no depósito: {str(e)}', 'error')
+    except Exception as e:
+        flash(f'Erro inesperado: {str(e)}', 'error')
+
     return redirect(url_for('metas.listar'))
 
 
@@ -125,12 +136,14 @@ def remover(id):
     # Proteção: verifica se usuário está logado
     if 'usuario_id' not in session:
         return redirect(url_for('auth.login'))
-    
-    # TODO: Quando a Frente 3 entregar o Gerenciador, substituir por:
-    # from services.gerenciador import Gerenciador
-    # g = Gerenciador(session['usuario_id'])
-    # g.remover_meta(id)
-    
-    print(f"[DEBUG] Removendo meta ID: {id}")
-    
+
+    # Cria o gerenciador e remove a meta
+    g = Gerenciador(session['usuario_id'])
+
+    try:
+        g.remover_meta(id)
+        flash('Meta removida com sucesso!', 'success')
+    except Exception as e:
+        flash(f'Erro ao remover meta: {str(e)}', 'error')
+
     return redirect(url_for('metas.listar'))
