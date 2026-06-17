@@ -5,9 +5,7 @@ from flask import Flask
 # ============================================================================
 # Cada blueprint é um arquivo .py dentro da pasta routes/
 # A Frente 4 é responsável por: dashboard, transacoes e metas
-# As demais frentes adicionarão seus imports aqui quando entregarem:
-#   from routes.auth import auth_bp           (Frente 1)
-#   from routes.contas import contas_bp       (Frente 5)
+# Frente 1 entregou auth; Frente 5 entregou contas.
 
 from routes.dashboard import dashboard_bp
 from routes.transacoes import transacoes_bp
@@ -17,43 +15,66 @@ from routes.contas import contas_bp
 
 
 # ============================================================================
-# CONFIGURAÇÃO DA APLICAÇÃO FLASK
+# FACTORY DA APLICAÇÃO (create_app)
 # ============================================================================
+# O padrão factory permite que os testes criem uma instância independente
+# (banco :memory:, TESTING=True) sem interferir na instância de produção.
+# É o que o conftest.py espera: create_app({"TESTING": True, ...}).
 
-# Cria a instância principal do Flask
-# O parâmetro __name__ indica o módulo atual - o Flask usa isso para localizar
-# as pastas templates/ e static/
-app = Flask(__name__)
+def create_app(config: dict | None = None) -> Flask:
+    """
+    Cria e configura a aplicação Flask.
 
-# Define a chave secreta para a sessão
-# A sessão é usada pelo sistema de login para lembrar qual usuário está logado
-# entre uma requisição e outra. Esta chave é TEMPORÁRIA - a Frente 1 pode
-# substituir por uma mais segura posteriormente.
-app.secret_key = 'chave-temporaria-para-desenvolvimento-frontend'
+    Parâmetros:
+        config: dicionário opcional com sobrescritas de configuração.
+                Útil para testes (ex: TESTING=True, SECRET_KEY diferente).
+
+    Retorna:
+        A instância Flask configurada e com todos os blueprints registrados.
+    """
+    app = Flask(__name__)
+
+    # strict_slashes=False: aceita /transacoes e /transacoes/ sem redirecionar.
+    # Sem isso, /transacoes retornaria 308 → /transacoes/, e os smoke tests
+    # (que esperam 200 ou 302) falhariam.
+    app.url_map.strict_slashes = False
+
+    # Chave secreta para a sessão (login). TEMPORÁRIA — ambiente de desenvolvimento.
+    app.secret_key = 'chave-temporaria-para-desenvolvimento-frontend'
+
+    # Sobrescritas de configuração (ex.: testes passam TESTING e SECRET_KEY).
+    if config:
+        app.config.update(config)
+
+    # ------------------------------------------------------------------
+    # REGISTRO DOS BLUEPRINTS
+    # ------------------------------------------------------------------
+    # Blueprints são como "sub-aplicações" dentro do Flask.
+    # O url_prefix faz todas as rotas do blueprint começarem com esse caminho.
+    # Exemplo: url_prefix='/transacoes' → /transacoes/, /transacoes/nova, etc.
+
+    # Dashboard (página inicial) - sem prefixo, fica na raiz (/ e /dashboard)
+    app.register_blueprint(dashboard_bp)
+
+    # Transações - prefixo /transacoes
+    app.register_blueprint(transacoes_bp, url_prefix='/transacoes')
+
+    # Metas - prefixo /metas
+    app.register_blueprint(metas_bp, url_prefix='/metas')
+
+    # Autenticação (Frente 1) - sem prefixo: /login, /cadastro, /logout
+    app.register_blueprint(auth_bp)
+
+    # Contas a pagar/receber (Frente 5) - prefixo /contas
+    app.register_blueprint(contas_bp, url_prefix='/contas')
+
+    return app
 
 
 # ============================================================================
-# REGISTRO DOS BLUEPRINTS
+# INSTÂNCIA DE NÍVEL DE MÓDULO (para python app.py e flask run)
 # ============================================================================
-# Blueprints são como "sub-aplicações" dentro do Flask.
-# Cada um tem seu próprio conjunto de rotas e pode ter um prefixo de URL.
-# Exemplo: um blueprint com prefixo '/transacoes' faz com que todas as suas
-# rotas comecem com /transacoes (ex: /transacoes/novo, /transacoes/1/remover)
-
-# Dashboard (página inicial) - sem prefixo, fica na raiz
-app.register_blueprint(dashboard_bp)
-
-# Transações - prefixo /transacoes
-app.register_blueprint(transacoes_bp, url_prefix='/transacoes')
-
-# Metas - prefixo /metas
-app.register_blueprint(metas_bp, url_prefix='/metas')
-
-# Autenticação (Frente 1) - prefixo /auth
-app.register_blueprint(auth_bp, url_prefix='/auth')
-
-# Contas a pagar/receber (Frente 5) - prefixo /contas
-app.register_blueprint(contas_bp, url_prefix='/contas')
+app = create_app()
 
 
 # ============================================================================
@@ -64,7 +85,7 @@ if __name__ == '__main__':
     """
     Executa o servidor Flask apenas se este arquivo for rodado diretamente.
     Se este arquivo for importado por outro módulo, o servidor NÃO é iniciado.
-    
+
     Parâmetros do app.run():
         debug=True : Ativa o modo debug - recarrega automaticamente quando
                      o código muda e mostra erros detalhados no navegador.

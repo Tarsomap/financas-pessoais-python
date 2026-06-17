@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Contas - Finanças Pessoais{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>📑 Contas a Pagar / Receber</h1>
+
+    <!-- Formulário para adicionar nova conta -->
+    <div class="card">
+        <h2>➕ Nova Conta</h2>
+        <form method="POST" action="{{ url_for('contas.adicionar') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo:</label>
+                    <select name="tipo" required>
+                        <option value="pagar">🔴 A Pagar</option>
+                        <option value="receber">🟢 A Receber</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição:</label>
+                    <input type="text" name="descricao" placeholder="Ex: Aluguel, Cliente X..." required>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor (R$):</label>
+                    <input type="number" step="0.01" name="valor" placeholder="0,00" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Vencimento:</label>
+                    <input type="date" name="vencimento" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary">➕ Adicionar</button>
+        </form>
+    </div>
+
+    <!-- Tabela de contas -->
+    <div class="card">
+        <h2>📋 Lista de Contas</h2>
+
+        {% if contas %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Vencimento</th>
+                        <th>Situação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in contas %}
+                    <tr>
+                        <td>{{ '🔴 A Pagar' if c.tipo == 'pagar' else '🟢 A Receber' }}</td>
+                        <td>{{ c.descricao }}</td>
+                        <td class="valor">R$ {{ "%.2f"|format(c.valor) }}</td>
+                        <td>{{ c.vencimento }}</td>
+                        <td>
+                            {# esta_vencida() ja considera o flag pago: paga nunca e "vencida" #}
+                            {% if c.pago %}
+                                ✅ Paga
+                            {% elif c.esta_vencida() %}
+                                ⚠️ Vencida
+                            {% else %}
+                                ⏳ Em aberto
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not c.pago %}
+                            <form method="POST" action="{{ url_for('contas.pagar', id=c.id) }}" class="form-inline">
+                                <button type="submit" class="btn-primary">✔️ Marcar paga</button>
+                            </form>
+                            {% endif %}
+                            <form method="POST" action="{{ url_for('contas.remover', id=c.id) }}" class="form-inline">
+                                <button type="submit" class="btn-danger" onclick="return confirm('Tem certeza que deseja remover esta conta?')">
+                                    🗑️ Remover
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="resumo">
+            <h3>📊 Resumo</h3>
+            <p>Total de contas: <strong>{{ contas|length }}</strong></p>
+        </div>
+        {% else %}
+        <p class="empty-message">📭 Nenhuma conta cadastrada ainda. Adicione a primeira acima!</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

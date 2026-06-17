@@ -77,12 +77,17 @@ financas-pessoais-python/
 │   ├── __init__.py
 │   ├── dashboard.py                # Página inicial: saldo e resumo
 │   ├── transacoes.py               # Listar / adicionar / remover transações
-│   └── metas.py                    # Listar / adicionar / depositar / remover metas
+│   ├── metas.py                    # Listar / adicionar / depositar / remover metas
+│   ├── auth.py                     # Login / cadastro / logout (liga ao services/auth.py)
+│   └── contas.py                   # Contas a pagar/receber (liga ao Gerenciador)
 ├── templates/                      # HTML (Jinja2)
 │   ├── base.html
 │   ├── dashboard.html
 │   ├── transacoes.html
-│   └── metas.html
+│   ├── metas.html
+│   ├── login.html
+│   ├── cadastro.html
+│   └── contas.html
 ├── static/
 │   └── style.css
 └── tests/                          # Suíte pytest (banco :memory:)
@@ -97,12 +102,11 @@ financas-pessoais-python/
     └── test_rotas.py               # (skip até app.py expor create_app)
 ```
 
-> ⚠️ **Pontas soltas conhecidas da Frente 4:** `app.py` registra os blueprints `auth` e
-> `contas` (`from routes.auth ...` / `from routes.contas ...`), mas `routes/auth.py` e
-> `routes/contas.py` ainda **não existem** — então `python app.py` falha no import até esses
-> blueprints serem criados. Além disso, `tests/test_rotas.py` espera uma fábrica
-> `create_app` em `app.py` (hoje a instância é criada no nível do módulo), por isso esse
-> teste fica em *skip*.
+> ℹ️ **Integração ainda em aberto:** `tests/test_rotas.py` espera uma fábrica `create_app` em
+> `app.py` (hoje a instância é criada no nível do módulo) **e** rotas sem prefixo (`/login`,
+> `/transacoes`), enquanto os blueprints usam prefixo (`/auth/login`, `/transacoes/`). Por
+> isso os 11 smoke tests de rota ficam em *skip* — alinhar URLs/fábrica é tarefa conjunta das
+> Frentes 4 e 6.
 
 ---
 
@@ -125,8 +129,9 @@ financas-pessoais-python/
 ### Autenticação e web (Frentes 1 e 4 — na `main`)
 - ✅ **Cadastro e login** com senha hasheada (`services/auth.py`: `gerar_hash`, `verificar_senha`, `cadastrar_usuario`, `autenticar`, `login`)
 - ✅ Model `Usuario(id, email, senha_hash, perfil)`
-- ✅ **Interface web Flask**: `app.py` + blueprints de dashboard, transações e metas, com templates Jinja2 e CSS
-- 🔧 Faltam fechar: blueprints `routes/auth.py` e `routes/contas.py` (referenciados por `app.py`) e a fábrica `create_app`
+- ✅ **Interface web Flask completa**: `app.py` + blueprints de dashboard, transações, metas, **autenticação** (login/cadastro/logout) e **contas a pagar/receber**, com templates Jinja2 e CSS
+- ✅ Menu **Contas** aparece só para o perfil **empresa**; mensagens *flash* de feedback em todas as páginas
+- 🔧 Resta: fábrica `create_app` + alinhar URLs com `tests/test_rotas.py` (ver nota acima)
 
 ---
 
@@ -135,8 +140,11 @@ financas-pessoais-python/
 ### Pré-requisitos
 
 - Python **3.10** ou superior (o ambiente atual usa 3.14)
-- O núcleo depende apenas da **biblioteca padrão** (`sqlite3` já vem com o Python).
-  As dependências de `requirements.txt` são para rodar os testes.
+- `sqlite3` já vem com o Python. A **app web depende do Flask**; os **testes**, do `pytest`.
+
+> ⚠️ O `requirements.txt` atual (gerado no Windows) está em **UTF-16** e lista só o Flask e
+> suas dependências — **não inclui o `pytest`**. Até ser regenerado em UTF-8 com o pytest, vale
+> instalar à mão: `./venv/bin/pip install Flask pytest`.
 
 ### Ambiente e dependências
 
@@ -156,18 +164,20 @@ python -m venv venv
 ./venv/bin/python -m pytest "tests/test_gerenciador.py::TestSaldo::test_saldo_vazio_e_zero"
 ```
 
-Estado atual da suíte: **104 passed, 1 skipped**. O único skip (`test_rotas`) ativa quando
-`app.py` expuser uma fábrica `create_app`.
+Estado atual da suíte: **104 passed, 11 skipped**. Os 11 skips são os smoke tests de
+`test_rotas`, que aguardam a fábrica `create_app` e o alinhamento de URLs (ver nota na
+seção de estrutura).
 
 ### Rodar a app web
 
 ```bash
-./venv/bin/python app.py        # ou: ./venv/bin/python -m flask run
+./venv/bin/pip install Flask     # se ainda não instalou
+./venv/bin/python app.py         # ou: ./venv/bin/python -m flask run
 ```
 
-> ⚠️ Hoje `python app.py` **falha no import**: `app.py` registra os blueprints `auth` e
-> `contas`, mas `routes/auth.py` e `routes/contas.py` ainda não foram criados. Crie esses
-> dois blueprints (ou comente os imports/registros) para subir a aplicação.
+A aplicação **sobe e funciona**: cadastro, login/logout, dashboard, transações, metas e — para
+o perfil empresa — contas a pagar/receber. Acesse `http://127.0.0.1:5000/` (redireciona para
+o login).
 
 ---
 

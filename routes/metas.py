@@ -13,8 +13,7 @@ Rotas:
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from services.gerenciador import Gerenciador
 
-# Cria o blueprint com prefixo /metas
-metas_bp = Blueprint('metas', __name__, url_prefix='/metas')
+metas_bp = Blueprint('metas', __name__)
 
 
 @metas_bp.route('/')

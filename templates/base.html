@@ -16,6 +16,11 @@
             <li><a href="{{ url_for('dashboard.dashboard') }}">📊 Dashboard</a></li>
             <li><a href="{{ url_for('transacoes.listar') }}">💸 Transações</a></li>
             <li><a href="{{ url_for('metas.listar') }}">🎯 Metas</a></li>
+            {# Contas a pagar/receber e funcionalidade de empresa: o link so
+               aparece quando o perfil logado e 'empresa' (guardado na sessao). #}
+            {% if session.get('tipo_perfil') == 'empresa' %}
+            <li><a href="{{ url_for('contas.listar') }}">📑 Contas</a></li>
+            {% endif %}
             <li><a href="{{ url_for('auth.logout') }}">🚪 Sair</a></li>
         </ul>
     </nav>
@@ -23,6 +28,14 @@
     <!-- CONTEÚDO PRINCIPAL -->
     <!-- Os templates que herdarem base.html vão preencher o bloco 'content' -->
     <main>
+        <!-- Mensagens flash: feedback de sucesso/erro das rotas (flash()).
+             Ficam aqui no base para aparecer em todas as paginas logadas. -->
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+          {% for categoria, msg in mensagens %}
+            <p class="flash {{ categoria }}">{{ msg }}</p>
+          {% endfor %}
+        {% endwith %}
+
         {% block content %}
         <!-- Conteúdo específico de cada página vai aqui -->
         {% endblock %}

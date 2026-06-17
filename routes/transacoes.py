@@ -12,8 +12,7 @@ Rotas:
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from services.gerenciador import Gerenciador
 
-# Cria o blueprint com prefixo /transacoes
-transacoes_bp = Blueprint('transacoes', __name__, url_prefix='/transacoes')
+transacoes_bp = Blueprint('transacoes', __name__)
 
 
 @transacoes_bp.route('/')

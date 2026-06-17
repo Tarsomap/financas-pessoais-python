@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar - Finanças Pessoais</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Tela de login: pagina standalone (sem o menu de navegacao, que so faz
+         sentido depois de logado). Usa o mesmo style.css das demais paginas. -->
+    <main>
+        <div class="container">
+            <div class="card" style="max-width: 420px; margin: 3rem auto;">
+                <h1>💰 Entrar</h1>
+
+                <!-- Mensagens flash (erros de login, avisos). categoria vira
+                     classe CSS (success/error) para estilizar quando houver. -->
+                {% with mensagens = get_flashed_messages(with_categories=true) %}
+                  {% for categoria, msg in mensagens %}
+                    <p class="flash {{ categoria }}">{{ msg }}</p>
+                  {% endfor %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <div class="form-group">
+                        <label>E-mail:</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha:</label>
+                        <input type="password" name="senha" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Entrar</button>
+                </form>
+
+                <p>Não tem conta? <a href="{{ url_for('auth.cadastro') }}">Cadastre-se</a></p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
