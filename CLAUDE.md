@@ -21,8 +21,10 @@ eles explicam o *porquê* e fazem parte da nota do trabalho.
 ### Onde o código realmente está agora (importante)
 
 A migração está **quase completa**. **Todas as 7 frentes já estão integradas na `main`**
-(Frentes 0–6). A suíte roda **104 passed, 1 skipped** — o único skip é `test_rotas`, que
-aguarda uma fábrica `create_app` em `app.py`.
+(Frentes 0–6) e a **app web sobe e funciona** (cadastro, login/logout, dashboard,
+transações, metas e contas a pagar/receber). A suíte roda **104 passed, 11 skipped** — os
+11 skips são os smoke tests de `test_rotas`, que aguardam `create_app` + alinhamento de URLs
+(ver pontas soltas abaixo). Requer `pip install Flask` (não está no `requirements.txt`).
 
 - ✅ **Frente 0** (banco): `db/schema.sql` + `services/persistencia.py` (SQLite, API por
   `usuario_id`).
@@ -40,11 +42,15 @@ aguarda uma fábrica `create_app` em `app.py`.
   e `services/auth.py` (`gerar_hash`, `verificar_senha`, `cadastrar_usuario`, `autenticar`,
   `login`). `persistencia.py` mantém o **import adiado** de `Usuario` (evita ciclo).
 - ✅ **Frente 4** (frontend Flask): `app.py` cria a instância e registra blueprints;
-  `routes/` (`dashboard`, `transacoes`, `metas`), `templates/` (Jinja2) e `static/style.css`.
-- ⚠️ **Pontas soltas conhecidas:** `app.py` importa/registra `routes.auth` e `routes.contas`,
-  mas `routes/auth.py` e `routes/contas.py` **ainda não existem** → `python app.py` falha no
-  import até criarem esses blueprints. E `tests/test_rotas.py` espera `create_app` em `app.py`
-  (hoje a instância é criada no nível do módulo), por isso esse teste fica em *skip*.
+  `routes/` (`dashboard`, `transacoes`, `metas`, `auth`, `contas`), `templates/` (Jinja2,
+  incl. `login`, `cadastro`, `contas`) e `static/style.css`. Os blueprints `routes/auth.py`
+  (liga ao `services/auth.py`) e `routes/contas.py` (liga ao `Gerenciador`) eram a "cola"
+  que faltava entre as Frentes 1/5 e o frontend — agora a app sobe.
+- ⚠️ **Pontas soltas conhecidas:** (1) `tests/test_rotas.py` espera `create_app` em `app.py`
+  (hoje a instância é criada no nível do módulo) **e** rotas sem prefixo (`/login`,
+  `/transacoes`), enquanto os blueprints usam prefixo (`/auth/login`, `/transacoes/`) — por
+  isso os 11 smoke tests ficam em *skip*; alinhar é tarefa conjunta das Frentes 4 e 6.
+  (2) `requirements.txt` está em **UTF-16** e sem `pytest` (gerado no Windows).
 - ℹ️ O CLI antigo (`main.py` + `views/menu.py`) já foi **aposentado** e removido do repo;
   a interface é o `app.py` (Flask).
 
@@ -58,8 +64,7 @@ aguarda uma fábrica `create_app` em `app.py`.
 ./venv/bin/python -m pytest tests/test_gerenciador.py -v
 ./venv/bin/python -m pytest "tests/test_gerenciador.py::TestSaldo::test_saldo_vazio_e_zero"
 
-# Rodar a app web (app.py já existe; hoje falha no import até criarem
-# routes/auth.py e routes/contas.py, que app.py registra)
+# Rodar a app web (precisa de Flask: pip install Flask). Sobe e funciona.
 ./venv/bin/python app.py        # ou: ./venv/bin/python -m flask run
 ```
 
@@ -116,7 +121,7 @@ grupo**. Quem é dono da frente implementa; as outras frentes apenas chamam.
 | 1 · Autenticação | João Guilherme Costa ("Jigui") | ✅ na `main` | 0, 2 | `models/__init__.py` |
 | 2 · Perfis polimórficos | João Gustavo | ✅ na `main` | — (isolada) | `models/__init__.py` |
 | 3 · Gerenciador + Isolamento | Vinícius | ✅ na `main` | 0 | — |
-| 4 · Frontend Flask | Lívia + Alice | ✅ na `main` (faltam rotas auth/contas) | 1, 3 | `app.py` (dono único) |
+| 4 · Frontend Flask | Lívia + Alice | ✅ na `main` (app sobe; falta `create_app`/URLs p/ test_rotas) | 1, 3 | `app.py` (dono único) |
 | 5 · Empresa (contas/fluxo de caixa) | Tarso | ✅ na `main` | 2, 3 | `models/__init__.py` |
 | 6 · Qualidade (testes) | João Guilherme Teles | ✅ na `main` | todas | — |
 
