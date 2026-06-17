@@ -16,5 +16,8 @@ db/*.db
 .vscode/
 .idea/
 
+# Lixo do sistema operacional (macOS)
+.DS_Store
+
 # Dados locais (criado automaticamente)
 dados/dados.txt
