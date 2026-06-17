@@ -1,33 +1,48 @@
-# 💸 Finanças Pessoais
+# 💸 Plataforma Financeira
 
-> Sistema de gerenciamento de finanças pessoais desenvolvido em Python com interface interativa no terminal.  
-> Projeto avaliativo da disciplina de **Laboratório de Programação** — Ciência da Computação, Universidade Tiradentes (UNIT).
+> Sistema de gerenciamento de finanças **pessoais e empresariais** desenvolvido em Python.
+> Evolução de um app de terminal (CLI) para uma **aplicação web Flask** com banco **SQLite**
+> e login por usuário, onde o sistema se comporta de forma diferente conforme o perfil de
+> quem está logado (**pessoa física × empresa**).
+> Projeto avaliativo da disciplina de **Laboratório de Programação** — Universidade Tiradentes (UNIT).
 
 ---
 
-## 👥 Integrantes e Responsabilidades
+## 👥 Integrantes e Frentes de Trabalho
 
-| # | Nome | Módulo(s) |
-|---|------|-----------|
-| 1 | Tarso Monteiro Alves Passos | `main.py` · `views/menu.py` · `tests/test_transacao.py` · `tests/test_gerenciador.py` |
-| 2 | João Gustavo Lima dos Santos | `models/transacao.py` · `models/categoria.py` |
-| 3 | Vinicius Prado Sobral | `models/meta.py` · `services/gerenciador.py` |
-| 4 | João Guilherme Costa Carvalho | `services/relatorio.py` · `tests/test_relatorio.py` |
-| 5 | João Guilherme Teles de Souza Lopes | `services/persistencia.py` |
-| 6 | Lívia Rodrigues Pinto | Integração da camada de views e testes de interface |
-| 7 | Alice Santos Silva | Integração da camada de views e testes de interface |
+O time de 7 pessoas se divide em **frentes** paralelas. Cada arquivo traz um cabeçalho
+`RESPONSÁVEL: ...` e o trabalho entra na `main` via Pull Request (1 colega revisa).
+
+| Frente | Responsável | Escopo | Status |
+|---|---|---|---|
+| 0 · Banco SQLite | Tarso Monteiro Alves Passos | `db/schema.sql`, `services/persistencia.py` | ✅ na `main` |
+| 1 · Autenticação | João Guilherme Costa Carvalho | `models/usuario.py`, `services/auth.py` | ✅ na `main` |
+| 2 · Perfis polimórficos | João Gustavo Lima dos Santos | `models/perfil.py` | ✅ na `main` |
+| 3 · Gerenciador + Isolamento | Vinicius Prado Sobral | `services/gerenciador.py` | ✅ na `main` |
+| 4 · Frontend Flask | Lívia Rodrigues Pinto · Alice Santos Silva | `app.py`, `routes/`, `templates/`, `static/` | ✅ na `main` |
+| 5 · Empresa (contas / fluxo de caixa) | Tarso Monteiro Alves Passos | `models/conta.py`, fluxo de caixa em `Relatorio` | ✅ na `main` |
+| 6 · Qualidade (testes) | João Guilherme Teles de Souza Lopes | `tests/` | ✅ na `main` |
 
 ---
 
 ## 📋 Descrição do Projeto
 
-O **Finanças Pessoais** é uma aplicação de linha de comando (CLI) que permite ao usuário controlar suas receitas, despesas e metas de economia de forma simples e organizada. Os dados são persistidos em um arquivo `.txt` local, sem dependência de banco de dados externo.
+A **Plataforma Financeira** permite que o usuário controle receitas, despesas, metas de
+economia e — no perfil empresa — contas a pagar/receber e fluxo de caixa. Os dados são
+persistidos em um banco **SQLite** local, escopados por usuário (cada um só enxerga os
+próprios dados).
 
-O projeto foi desenvolvido para demonstrar na prática os principais conceitos estudados na disciplina:
+O sistema é **polimórfico por perfil**: a mesma base de código atende pessoa física
+(categorias do dia a dia: Alimentação, Transporte, Saúde…) e empresa (Vendas, Fornecedores,
+Folha de Pagamento…, mais contas a pagar/receber e projeção de caixa).
 
-- **Modelagem orientada a objetos** com herança e encapsulamento
-- **Separação de responsabilidades** em camadas (models / services / views)
-- **Persistência de dados** em arquivo texto com leitura e escrita manual
+O projeto demonstra na prática os conceitos da disciplina:
+
+- **Modelagem orientada a objetos** — herança (`Transacao` → `Receita`/`Despesa`),
+  classes abstratas (`Perfil` → `PessoaFisica`/`Empresa`) e factory (`criar_perfil`)
+- **Separação de responsabilidades em camadas** (frontend → services → models → banco)
+- **Padrão Repository** — só a `Persistencia` escreve SQL
+- **Persistência em SQLite** com isolamento por `usuario_id`
 - **Testes automatizados** com `pytest` cobrindo as regras de negócio
 
 ---
@@ -36,41 +51,82 @@ O projeto foi desenvolvido para demonstrar na prática os principais conceitos e
 
 ```text
 financas-pessoais-python/
-├── main.py                  # Ponto de entrada — carrega dados e inicia o menu
+├── app.py                          # App Flask: cria a instância e registra os blueprints
 ├── README.md
-├── dados/
-│   └── dados.txt            # Arquivo de persistencia (criado automaticamente)
-├── models/
+├── CLAUDE.md                       # Guia para o agente de IA + estado do projeto
+├── Plano-Tecnico-Plataforma-Financeira.md  # Documento-fonte (schema, contratos, frentes)
+├── requirements.txt
+├── db/
+│   ├── schema.sql                  # Estrutura do banco (usuario, transacao, meta, conta)
+│   └── financas.db                 # Banco SQLite (não versionado)
+├── models/                         # Entidades de domínio (POO)
 │   ├── __init__.py
-│   ├── transacao.py         # Classes Transacao, Receita e Despesa (heranca)
-│   ├── categoria.py         # Classe Categoria com validacao de nome
-│   └── meta.py              # Classe Meta com calculo de progresso
-├── services/
+│   ├── transacao.py                # Transacao → Receita / Despesa (herança)
+│   ├── categoria.py                # Categoria com validação de nome
+│   ├── meta.py                     # Meta com cálculo de progresso
+│   ├── perfil.py                   # Perfil(ABC) → PessoaFisica / Empresa + criar_perfil
+│   ├── conta.py                    # Conta a pagar/receber (perfil empresa)
+│   └── usuario.py                  # Usuario(id, email, senha_hash, perfil)
+├── services/                       # Regra de negócio
 │   ├── __init__.py
-│   ├── gerenciador.py       # Logica central: adicionar, remover, calcular saldo
-│   ├── relatorio.py         # Analises: totais por categoria, comparativo mensal
-│   └── persistencia.py      # Salvar e carregar dados em arquivo .txt
-├── views/
-│   └── menu.py              # Interface interativa no terminal (menus e submenus)
-└── tests/
-    ├── __init__.py
-    ├── test_transacao.py    # Testa criacao e validacao de Receita e Despesa
-    ├── test_gerenciador.py  # Testa saldo, adicao e remocao de transacoes
-    └── test_relatorio.py    # Testa calculo de totais e comparativo por categoria
+│   ├── gerenciador.py              # Gerenciador(usuario_id): fachada de operações
+│   ├── relatorio.py                # Relatório de transações + fluxo de caixa
+│   ├── persistencia.py             # Única camada que fala com o SQLite (Repository)
+│   └── auth.py                     # Cadastro, hash de senha e login
+├── routes/                         # Blueprints Flask (camada de views)
+│   ├── __init__.py
+│   ├── dashboard.py                # Página inicial: saldo e resumo
+│   ├── transacoes.py               # Listar / adicionar / remover transações
+│   └── metas.py                    # Listar / adicionar / depositar / remover metas
+├── templates/                      # HTML (Jinja2)
+│   ├── base.html
+│   ├── dashboard.html
+│   ├── transacoes.html
+│   └── metas.html
+├── static/
+│   └── style.css
+└── tests/                          # Suíte pytest (banco :memory:)
+    ├── conftest.py
+    ├── test_transacao.py
+    ├── test_perfil.py
+    ├── test_conta.py
+    ├── test_gerenciador.py
+    ├── test_relatorio.py
+    ├── test_usuario.py
+    ├── test_auth.py
+    └── test_rotas.py               # (skip até app.py expor create_app)
 ```
+
+> ⚠️ **Pontas soltas conhecidas da Frente 4:** `app.py` registra os blueprints `auth` e
+> `contas` (`from routes.auth ...` / `from routes.contas ...`), mas `routes/auth.py` e
+> `routes/contas.py` ainda **não existem** — então `python app.py` falha no import até esses
+> blueprints serem criados. Além disso, `tests/test_rotas.py` espera uma fábrica
+> `create_app` em `app.py` (hoje a instância é criada no nível do módulo), por isso esse
+> teste fica em *skip*.
+
+---
 
 ## ⚙️ Funcionalidades
 
+### Comuns a todos os perfis
 - ✅ Cadastro de **receitas** e **despesas** com descrição, valor, categoria e data
-- ✅ Listagem e remoção de transações com atualização automática do saldo
+- ✅ Listagem e remoção de transações (por id) com atualização do saldo
 - ✅ **Saldo atual** calculado em tempo real (receitas − despesas)
-- ✅ Filtro de transações por tipo (receita/despesa)
-- ✅ Cadastro de **metas de economia** com valor-alvo e prazo
-- ✅ Barra de progresso por meta no terminal
-- ✅ Depósito parcial em metas existentes
-- ✅ **Relatório mensal** com total por categoria e sugestões de corte
-- ✅ Persistência automática em arquivo `.txt` ao encerrar
-- ✅ Testes automatizados com `pytest` nos módulos de negócio
+- ✅ Filtro de transações por tipo e categoria
+- ✅ Cadastro de **metas de economia** com valor-alvo e prazo, depósito parcial e progresso
+- ✅ **Relatório mensal**: totais por categoria, comparativo com o mês anterior e sugestões de corte
+- ✅ Persistência em **SQLite** isolada por usuário
+
+### Específicas do perfil Empresa
+- ✅ **Contas a pagar / receber** com vencimento e baixa (marcar como paga)
+- ✅ Detecção de contas vencidas
+- ✅ **Fluxo de caixa** mensal — projeção de entradas, saídas e saldo projetado pelas contas que vencem no mês
+
+### Autenticação e web (Frentes 1 e 4 — na `main`)
+- ✅ **Cadastro e login** com senha hasheada (`services/auth.py`: `gerar_hash`, `verificar_senha`, `cadastrar_usuario`, `autenticar`, `login`)
+- ✅ Model `Usuario(id, email, senha_hash, perfil)`
+- ✅ **Interface web Flask**: `app.py` + blueprints de dashboard, transações e metas, com templates Jinja2 e CSS
+- 🔧 Faltam fechar: blueprints `routes/auth.py` e `routes/contas.py` (referenciados por `app.py`) e a fábrica `create_app`
 
 ---
 
@@ -78,24 +134,59 @@ financas-pessoais-python/
 
 ### Pré-requisitos
 
-- Python **3.10** ou superior
-- `pytest` — apenas para rodar os testes
+- Python **3.10** ou superior (o ambiente atual usa 3.14)
+- O núcleo depende apenas da **biblioteca padrão** (`sqlite3` já vem com o Python).
+  As dependências de `requirements.txt` são para rodar os testes.
+
+### Ambiente e dependências
 
 ```bash
-pip install pytest
+python -m venv venv
+./venv/bin/pip install -r requirements.txt
 ```
 
-### Executar o sistema
+### Rodar os testes
 
 ```bash
-python main.py
+# Todos
+./venv/bin/python -m pytest tests/ -v
+
+# Um arquivo / classe / teste isolado
+./venv/bin/python -m pytest tests/test_gerenciador.py -v
+./venv/bin/python -m pytest "tests/test_gerenciador.py::TestSaldo::test_saldo_vazio_e_zero"
 ```
 
-### Executar os testes
+Estado atual da suíte: **104 passed, 1 skipped**. O único skip (`test_rotas`) ativa quando
+`app.py` expuser uma fábrica `create_app`.
+
+### Rodar a app web
 
 ```bash
-pytest tests/ -v
+./venv/bin/python app.py        # ou: ./venv/bin/python -m flask run
 ```
+
+> ⚠️ Hoje `python app.py` **falha no import**: `app.py` registra os blueprints `auth` e
+> `contas`, mas `routes/auth.py` e `routes/contas.py` ainda não foram criados. Crie esses
+> dois blueprints (ou comente os imports/registros) para subir a aplicação.
+
+---
+
+## 🏛️ Arquitetura em Camadas
+
+O Flask entra no topo; a base de services/models quase não muda; só a persistência troca de
+tecnologia (`.txt` → SQLite).
+
+```
+Flask (routes/ + templates/)   ← frontend   [camada NOVA — Frente 4]
+Gerenciador, Relatorio         ← services   [Gerenciador escopado a usuario_id]
+Usuario, Perfil, Conta...      ← models     [domínio POO]
+Persistencia → SQLite          ← banco      [padrão Repository: só ela escreve SQL]
+```
+
+**Regra de camadas:** a view **não calcula nada** — chama o `Gerenciador` e exibe; o
+`Gerenciador` **não escreve SQL** — delega à `Persistencia`; a `Persistencia` é a **única**
+que fala com o banco. `Relatorio` é desacoplado: recebe listas prontas e calcula em cima
+delas, sem saber a origem.
 
 ---
 
@@ -103,23 +194,27 @@ pytest tests/ -v
 
 | Conceito | Onde é usado |
 |----------|-------------|
-| **Herança e polimorfismo** | `Receita` e `Despesa` herdam de `Transacao`; `isinstance()` para distingui-las |
-| **Encapsulamento** | Atributos privados com `_` em `Gerenciador` e métodos de acesso públicos |
-| **List comprehensions** | Filtros de transações por tipo/categoria e cálculo de saldo em `gerenciador.py` |
-| **Tratamento de exceções** | `try/except ValueError/IndexError` em validações de entrada e remoção |
-| **Leitura/escrita de arquivos** | `open()`, `split('|')`, `write()` em `persistencia.py` |
-| **Laços `while`** | Menus e submenus ativos até o usuário escolher sair em `views/menu.py` |
-| **Funções** | Cada tela do menu é uma função separada (coesão) em `views/menu.py` |
-| **`enumerate()`** | Exibição numerada de transações, metas e categorias no terminal |
-| **Módulos e imports** | Separação em pacotes `models`, `services`, `views` |
-| **`datetime`** | Conversão e filtragem de datas com `date.fromisoformat()` |
-| **`os.path`** | Caminhos portáteis entre sistemas operacionais em `persistencia.py` |
-| **Testes com `pytest`** | Fixtures, `pytest.raises` e casos de sucesso/falha por regra de negócio |
+| **Herança e polimorfismo** | `Receita`/`Despesa` herdam de `Transacao`; `PessoaFisica`/`Empresa` de `Perfil` |
+| **Classe abstrata (ABC)** | `Perfil(ABC)` com `@abstractmethod` `categorias_disponiveis()` e `tipo_str()` |
+| **Factory** | `criar_perfil(tipo)` devolve o `Perfil` certo a partir do texto do banco |
+| **Encapsulamento** | `usuario_id` privado no `Gerenciador`; a view nunca o vê |
+| **Padrão Repository** | `Persistencia` concentra todo o SQL; o resto do código ignora o banco |
+| **List comprehensions** | Filtros de transações/contas por tipo e categoria |
+| **Tratamento de exceções** | `ValueError`/`LookupError` em validações de domínio |
+| **SQLite** | `sqlite3` da biblioteca padrão; isolamento por `usuario_id` |
+| **`datetime`** | Datas em texto ISO (`date.fromisoformat()` ⇄ `.isoformat()`) |
+| **Testes com `pytest`** | Fixtures, `pytest.raises`, banco `:memory:` por teste |
 
 ---
 
-## 📌 Observações
+## 📌 Convenções
 
-- O arquivo `dados/dados.txt` é criado automaticamente na primeira execução.
-- Os testes **não dependem** de arquivo em disco — usam objetos criados diretamente em memória para garantir isolamento.
-- O projeto **não utiliza bibliotecas externas** além do `pytest`.
+- **Tudo em português** — tabelas, colunas, métodos, classes e variáveis (única exceção: `id`).
+- **Um conceito, um nome** no projeto inteiro (ex.: sempre `usuario_id`, nunca `user_id`).
+- `snake_case` para funções/variáveis/arquivos; `PascalCase` para classes; `MAIÚSCULAS` para constantes; prefixo `_` para uso interno.
+- **Type hints** nas assinaturas e **docstring curta** em toda função pública.
+- Datas como **texto ISO**; booleanos no banco como **`0/1`**; `id` é responsabilidade do banco (anexado dinamicamente ao carregar).
+- `db/*.db` **nunca** é versionado (binário = conflito garantido); veja `.gitignore`.
+
+> O documento-fonte do plano (schema, contratos congelados e divisão de trabalho) é
+> `Plano-Tecnico-Plataforma-Financeira.md` na raiz — leia-o antes de qualquer mudança estrutural.
