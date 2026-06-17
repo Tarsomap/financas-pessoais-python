@@ -71,20 +71,28 @@ def dashboard():
         reverse=True
     )[:5]
 
-    # Calcula o total de despesas do mês atual.
-    # Filtra transações que são despesa E pertencem ao mês/ano corrente.
+    # Filtra transações do mês atual para calcular receitas e despesas.
     hoje = date.today()
-    despesas_mes = [
+    transacoes_mes = [
         t for t in todas_transacoes
-        if t.tipo() == 'despesa' and t.data.year == hoje.year and t.data.month == hoje.month
+        if t.data.year == hoje.year and t.data.month == hoje.month
     ]
-    total_despesas_mes = sum(d.valor for d in despesas_mes)
+    total_receitas_mes = sum(t.valor for t in transacoes_mes if t.tipo() == 'receita')
+    total_despesas_mes = sum(t.valor for t in transacoes_mes if t.tipo() == 'despesa')
 
-    # render_template: pega o arquivo HTML em templates/ e injeta as variáveis.
-    # O template acessa saldo, ultimas_transacoes e total_despesas_mes via Jinja2.
+    # Conta quantas metas ativas (não concluídas) o usuário tem.
+    metas = g.listar_metas()
+    metas_ativas = sum(1 for m in metas if not m.concluida())
+
+    # Conta transações do mês (para o card de resumo).
+    total_transacoes_mes = len(transacoes_mes)
+
     return render_template(
         'dashboard.html',
         saldo=saldo,
         ultimas_transacoes=ultimas_transacoes,
-        total_despesas_mes=total_despesas_mes
+        total_receitas_mes=total_receitas_mes,
+        total_despesas_mes=total_despesas_mes,
+        metas_ativas=metas_ativas,
+        total_transacoes_mes=total_transacoes_mes,
     )

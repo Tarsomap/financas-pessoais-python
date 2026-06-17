@@ -20,8 +20,7 @@
         <div class="resumo-card">
             <h3>📈 Total de Receitas (mês)</h3>
             <div class="valor receita">
-                <!-- TODO: substituir por valor real quando o Gerenciador estiver pronto -->
-                R$ 6.200,00
+                R$ {{ "%.2f"|format(total_receitas_mes) }}
             </div>
         </div>
         <div class="resumo-card">
@@ -33,15 +32,13 @@
         <div class="resumo-card">
             <h3>🎯 Metas Ativas</h3>
             <div class="valor">
-                <!-- TODO: pegar do Gerenciador quando estiver pronto -->
-                3
+                {{ metas_ativas }}
             </div>
         </div>
         <div class="resumo-card">
             <h3>📅 Transações (mês)</h3>
             <div class="valor">
-                <!-- TODO: contar do Gerenciador -->
-                {{ ultimas_transacoes|length }}
+                {{ total_transacoes_mes }}
             </div>
         </div>
     </div>
@@ -66,8 +63,8 @@
                     <td>{{ t.data }}</td>
                     <td>{{ t.descricao }}</td>
                     <td>{{ t.categoria if t.categoria else '-' }}</td>
-                    <td class="{% if t.tipo == 'receita' %}receita{% else %}despesa{% endif %}">
-                        {% if t.tipo == 'receita' %}+{% else %}-{% endif %} 
+                    <td class="{% if t.tipo() == 'receita' %}receita{% else %}despesa{% endif %}">
+                        {% if t.tipo() == 'receita' %}+{% else %}-{% endif %}
                         R$ {{ "%.2f"|format(t.valor) }}
                     </td>
                 </tr>

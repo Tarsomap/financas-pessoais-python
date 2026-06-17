@@ -65,10 +65,10 @@
                 </thead>
                 <tbody>
                     {% for t in transacoes %}
-                    <tr class="{{ 'receita-row' if t.tipo == 'receita' else 'despesa-row' }}">
-                        <td>{{ '💰 Receita' if t.tipo == 'receita' else '💸 Despesa' }}</td>
+                    <tr class="{{ 'receita-row' if t.tipo() == 'receita' else 'despesa-row' }}">
+                        <td>{{ '💰 Receita' if t.tipo() == 'receita' else '💸 Despesa' }}</td>
                         <td>{{ t.descricao }}</td>
-                        <td class="valor {{ 'positivo' if t.tipo == 'receita' else 'negativo' }}">
+                        <td class="valor {{ 'positivo' if t.tipo() == 'receita' else 'negativo' }}">
                             R$ {{ "%.2f"|format(t.valor) }}
                         </td>
                         <td>{{ t.categoria }}</td>
