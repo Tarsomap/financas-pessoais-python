@@ -29,10 +29,12 @@ class TestRotasPublicas:
         """
         cliente é a fixture do conftest que cria um app.test_client().
         .get() simula uma requisição GET — como o navegador faria.
-        response.status_code deve ser 200 (OK).
+        A raiz (/) aponta para o dashboard, que exige login — então sem
+        sessão ativa retorna 302 (redirect para /login). Ambos (200 e 302)
+        indicam que a rota existe e responde sem erro 500.
         """
         resposta = cliente.get("/")
-        assert resposta.status_code == 200
+        assert resposta.status_code in (200, 302)
 
     def test_login_responde(self, cliente):
         resposta = cliente.get("/login")

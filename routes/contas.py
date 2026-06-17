@@ -17,7 +17,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 
 from services.gerenciador import Gerenciador
 
-contas_bp = Blueprint('contas', __name__, url_prefix='/contas')
+contas_bp = Blueprint('contas', __name__)
 
 
 @contas_bp.route('/')

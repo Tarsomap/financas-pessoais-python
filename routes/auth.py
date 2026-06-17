@@ -8,18 +8,18 @@ guardar/limpar a sessao e redirecionar. E a "ligacao" que faltava entre a
 logica do Jigui (Frente 1) e o frontend (Frente 4).
 
 Rotas:
-    GET/POST /auth/login     - tela de login e processamento
-    GET/POST /auth/cadastro  - tela de cadastro e processamento
-    GET      /auth/logout    - encerra a sessao
+    GET/POST /login     - tela de login e processamento
+    GET/POST /cadastro  - tela de cadastro e processamento
+    GET      /logout    - encerra a sessao
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
 from services import auth
 
-# url_prefix='/auth' tambem e aplicado no app.py ao registrar; manter aqui
-# deixa o blueprint autossuficiente e alinhado ao padrao de transacoes/metas.
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+# Sem url_prefix aqui — o app.py registra sem prefixo para que as rotas
+# fiquem em /login, /cadastro, /logout (mais natural para o usuario).
+auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
