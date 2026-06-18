@@ -1,5 +1,7 @@
 from flask import Flask
 
+from services.persistencia import Persistencia
+
 # ============================================================================
 # IMPORTS DOS BLUEPRINTS (rotas da aplicação)
 # ============================================================================
@@ -45,6 +47,11 @@ def create_app(config: dict | None = None) -> Flask:
     # Sobrescritas de configuração (ex.: testes passam TESTING e SECRET_KEY).
     if config:
         app.config.update(config)
+
+    # Provisiona as tabelas no banco antes de qualquer rota ser registrada.
+    # É seguro chamar sempre: o schema usa CREATE TABLE IF NOT EXISTS,
+    # então em disco existente vira no-op; em clone fresco, cria tudo.
+    Persistencia.inicializar_banco()
 
     # ------------------------------------------------------------------
     # REGISTRO DOS BLUEPRINTS
